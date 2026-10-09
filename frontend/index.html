@@ -4,158 +4,1027 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAANS — Air Safety System</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<header>
-  <div>
-    <h1>SAANS</h1>
-    <p>Smart Air Awareness &amp; Neighborhood Safety</p>
-  </div>
-  <div class="location">
-    <label for="locationSearch">📍 Find a location in India</label>
-    <input id="locationSearch" type="search"
-           placeholder="Search city, town or village">
-    <button id="searchLocationBtn" type="button">Search</button>
-    <select id="locationResults" aria-label="Matching locations" hidden>
-      <option value="">Select a location</option>
-    </select>
-    <button id="useMyLocation" type="button">Use my location</button>
-    <p id="locationMessage" role="status"></p>
-    <p>Selected: <strong id="selectedLocation">Kolkata</strong></p>
-    <p>Data timestamp: <time id="dataTimestamp">Waiting for data…</time></p>
-  </div>
-</header>
 
-<main>
-  <section class="hero-card">
-    <div>
-      <p class="label">CURRENT AIR QUALITY ESTIMATE</p>
-      <div class="aqi-row">
-        <span id="aqi">--</span>
+  <meta
+    name="description"
+    content="SAANS helps people explore estimated outdoor air quality, understand pollution exposure, and make informed choices for safer communities."
+  >
+
+  <meta name="theme-color" content="#123b32">
+
+  <title>SAANS | Smart Air Awareness & Neighborhood Safety</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    :root {
+      --saans-green: #174f40;
+      --saans-green-dark: #123b32;
+      --saans-green-light: #e9f5ee;
+      --saans-text: #18312b;
+      --saans-muted: #63756e;
+      --saans-border: #dce7e0;
+      --saans-surface: #ffffff;
+      --saans-background: #f5f8f5;
+      --saans-radius: 18px;
+      --saans-shadow: 0 8px 28px rgba(20, 55, 43, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 24px;
+    }
+
+    body {
+      margin: 0;
+      background: var(--saans-background);
+      color: var(--saans-text);
+      font-family: "DM Sans", sans-serif;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3 {
+      font-family: "Manrope", sans-serif;
+      line-height: 1.2;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    a {
+      color: var(--saans-green);
+    }
+
+    .saans-header {
+      padding: 18px 24px;
+      color: white;
+      background: var(--saans-green-dark);
+    }
+
+    .header-inner {
+      width: min(1160px, 100%);
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 13px;
+      font-family: "Manrope", sans-serif;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: #c4ddd0;
+      font-size: 0.8rem;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-nav a {
+      padding: 8px 11px;
+      border-radius: 8px;
+      color: #e4f0e9;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: background 180ms ease;
+    }
+
+    .header-nav a:hover {
+      background: rgba(255,255,255,.12);
+    }
+
+    .page-container {
+      width: min(1160px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 24px 0 54px;
+    }
+
+    .saans-hero {
+      position: relative;
+      isolation: isolate;
+      min-height: 330px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      padding: clamp(24px, 5vw, 60px);
+      border-radius: 24px;
+      color: white;
+      background:
+        linear-gradient(
+          90deg,
+          rgba(8, 36, 29, .88),
+          rgba(8, 36, 29, .55) 58%,
+          rgba(8, 36, 29, .16)
+        ),
+        url("https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1800&q=85")
+        center / cover;
+      animation: saans-enter 700ms ease-out both;
+    }
+
+    .saans-hero::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0 0 0 48%;
+      background:
+        url("https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1000&q=85")
+        center / cover;
+      opacity: .65;
+      mask-image: linear-gradient(90deg, transparent, black 38%);
+    }
+
+    .hero-content {
+      max-width: 650px;
+    }
+
+    .hero-eyebrow {
+      margin: 0 0 12px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+    }
+
+    .hero-content h2 {
+      margin: 0 0 16px;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      letter-spacing: -.04em;
+    }
+
+    .hero-content > p:last-child {
+      max-width: 550px;
+      margin: 0;
+      color: #edf6ef;
+      font-size: 1.05rem;
+    }
+
+    .section {
+      margin-top: 28px;
+      animation: saans-enter 600ms ease-out both;
+    }
+
+    .section-heading {
+      margin-bottom: 16px;
+    }
+
+    .section-heading h2 {
+      margin: 0 0 7px;
+      font-size: clamp(1.35rem, 3vw, 1.8rem);
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--saans-muted);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--saans-border);
+      border-radius: var(--saans-radius);
+      background: var(--saans-surface);
+      box-shadow: var(--saans-shadow);
+      transition:
+        transform 200ms ease,
+        box-shadow 200ms ease,
+        border-color 200ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 34px rgba(20, 55, 43, .09);
+      border-color: #bfd5c7;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1.12rem;
+    }
+
+    .muted {
+      color: var(--saans-muted);
+      font-size: .92rem;
+    }
+
+    .location-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .location-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 15px;
+    }
+
+    .field label {
+      font-weight: 600;
+      font-size: .9rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid #cddbd2;
+      border-radius: 10px;
+      background: white;
+      color: var(--saans-text);
+      outline: none;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--saans-green);
+      box-shadow: 0 0 0 3px rgba(23, 79, 64, .12);
+    }
+
+    .btn {
+      min-height: 43px;
+      padding: 10px 16px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-weight: 700;
+      transition: transform 180ms ease, background 180ms ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--saans-green);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #103d31;
+    }
+
+    .btn-secondary {
+      border-color: #cbdad0;
+      background: white;
+      color: var(--saans-green-dark);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--saans-green-light);
+    }
+
+    .selected-location {
+      margin: 14px 0 0;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .message {
+      min-height: 1.5em;
+      margin: 8px 0 0;
+      color: var(--saans-muted);
+      font-size: .88rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .air-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .air-score {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .score-number {
+      font-family: "Manrope", sans-serif;
+      font-size: clamp(2.8rem, 6vw, 4rem);
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -.04em;
+    }
+
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: #edf1ee;
+      color: #34443c;
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .status.green, .status.low {
+      background: #d9f3df;
+      color: #14532d;
+    }
+
+    .status.yellow, .status.moderate {
+      background: #fff0bf;
+      color: #854d0e;
+    }
+
+    .status.orange, .status.high {
+      background: #ffe0c2;
+      color: #9a3412;
+    }
+
+    .status.red, .status.very-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .pollutant-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .pollutant {
+      padding: 15px;
+      border: 1px solid var(--saans-border);
+      border-radius: 13px;
+      background: #fbfdfb;
+    }
+
+    .pollutant-name {
+      color: var(--saans-muted);
+      font-size: .82rem;
+    }
+
+    .pollutant-value {
+      display: block;
+      margin-top: 4px;
+      font-size: 1.45rem;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .pollutant-unit {
+      color: var(--saans-muted);
+      font-size: .75rem;
+    }
+
+    .result {
+      margin-top: 15px;
+      padding: 14px 16px;
+      border: 1px solid #d8e7dd;
+      border-radius: 12px;
+      background: #f0f7f1;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+      animation: saans-result-enter 300ms ease-out both;
+    }
+
+    .result:empty {
+      display: none;
+    }
+
+    .school-panel {
+      border-left: 4px solid #b7c8bc;
+    }
+
+    .fire-panel {
+      background: #fbfcfa;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 14px;
+    }
+
+    .form-grid .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .answer-box {
+      min-height: 80px;
+    }
+
+    .data-note {
+      margin-top: 12px;
+      color: var(--saans-muted);
+      font-size: .83rem;
+      line-height: 1.65;
+    }
+
+    .footer {
+      padding: 24px 18px;
+      background: var(--saans-green-dark);
+      color: #dbece1;
+      text-align: center;
+      font-size: .85rem;
+    }
+
+    .footer p {
+      max-width: 850px;
+      margin: 5px auto;
+    }
+
+    .saans-updated {
+      animation: saans-value-update 350ms ease-out;
+    }
+
+    @keyframes saans-enter {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes saans-result-enter {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes saans-value-update {
+      0% { opacity: .55; transform: translateY(3px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 760px) {
+      .header-inner {
+        align-items: flex-start;
+      }
+
+      .header-nav {
+        width: 100%;
+      }
+
+      .header-nav a {
+        padding-left: 0;
+        padding-right: 12px;
+      }
+
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .pollutant-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .saans-hero {
+        min-height: 280px;
+      }
+
+      .saans-hero::after {
+        inset-left: 35%;
+        opacity: .4;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-container {
+        width: min(100% - 24px, 1160px);
+        padding-top: 12px;
+      }
+
+      .saans-header {
+        padding: 16px 12px;
+      }
+
+      .location-row {
+        grid-template-columns: 1fr;
+      }
+
+      .air-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid .full-width {
+        grid-column: auto;
+      }
+
+      .card {
+        padding: 17px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="saans-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">S</div>
         <div>
-          <h2 id="aqiStatus">Loading…</h2>
-          <p id="aqiDescription">Getting current air conditions…</p>
+          <h1>SAANS</h1>
+          <p>Smart Air Awareness &amp; Neighborhood Safety</p>
         </div>
       </div>
-      <p id="dataSource">Source: Open-Meteo Air Quality API</p>
-    </div>
-    <div class="risk-circle">
-      <span id="riskScore">--</span>
-      <small>RISK</small>
-    </div>
-  </section>
 
-  <section class="grid" aria-label="Pollutant concentrations">
-    <div class="card"><span>PM2.5</span><strong id="pm25">--</strong><small>µg/m³</small></div>
-    <div class="card"><span>PM10</span><strong id="pm10">--</strong><small>µg/m³</small></div>
-    <div class="card"><span>NO₂</span><strong id="no2">--</strong><small>µg/m³</small></div>
-    <div class="card"><span>O₃</span><strong id="o3">--</strong><small>µg/m³</small></div>
-  </section>
-  <p id="refreshMessage" role="status"></p>
-  <button id="refreshAir" type="button">Refresh air-quality data</button>
+      <nav class="header-nav" aria-label="Main navigation">
+        <a href="#air-quality">Air Quality</a>
+        <a href="#exposure">Exposure</a>
+        <a href="#school-safety">School Safety</a>
+        <a href="#place-checker">Place Checker</a>
+        <a href="#ask-saans">Ask SAANS</a>
+      </nav>
+    </div>
+  </header>
 
-  <section class="panel">
-    <h2>🏥 Place Quality Checker</h2>
-    <p>Check estimated outdoor air conditions around a place. This does not certify indoor air or the overall safety of a building.</p>
-    <div class="form-grid">
-      <div>
-        <label for="placeType">Place type</label>
-        <select id="placeType">
-          <option value="hospital">Hospital</option>
-          <option value="office">Office</option>
-          <option value="school">School / College</option>
-          <option value="home">Home</option>
-          <option value="public">Public place</option>
-        </select>
+  <main class="page-container">
+
+    <section class="saans-hero" aria-label="Nature and city life">
+      <div class="hero-content">
+        <p class="hero-eyebrow">AIR QUALITY AWARENESS</p>
+        <h2>Breathe Better.<br>Live Better.</h2>
+        <p>
+          Understand the air around you. Make informed choices
+          for healthier homes, safer schools, and stronger communities.
+        </p>
       </div>
-      <div>
-        <label for="placeName">Place name (optional)</label>
-        <input id="placeName" type="text" placeholder="e.g. hospital or office name">
+    </section>
+
+    <!-- LOCATION SEARCH -->
+    <section class="section" id="location">
+      <div class="section-heading">
+        <h2>Explore Your Location</h2>
+        <p>Search for cities, towns, and other geocoded places across India.</p>
       </div>
-    </div>
-    <button id="checkPlace" type="button">Check place conditions</button>
-    <div id="placeResult" class="result hidden" aria-live="polite"></div>
-  </section>
 
-  <section class="panel">
-    <h2>🫁 Personal Pollution Exposure</h2>
-    <div class="form-grid">
-      <div>
-        <label for="profile">Who are you?</label>
-        <select id="profile">
-          <option value="child">Child / Student</option>
-          <option value="adult">Adult</option>
-          <option value="elderly">Elderly</option>
-          <option value="worker">Outdoor Worker</option>
-          <option value="sensitive">Sensitive Person</option>
-        </select>
+      <div class="card">
+        <div class="location-row">
+          <div class="field" style="margin-bottom: 0;">
+            <label for="locationSearch">Search for a place</label>
+            <input
+              id="locationSearch"
+              type="search"
+              placeholder="For example, Kolkata, Siliguri, Durgapur"
+              autocomplete="off"
+            >
+          </div>
+
+          <button
+            id="searchLocationBtn"
+            class="btn btn-primary"
+            type="button"
+            style="align-self: end;"
+          >
+            Search
+          </button>
+        </div>
+
+        <div class="location-actions">
+          <button id="useMyLocation" class="btn btn-secondary" type="button">
+            Use My Location
+          </button>
+        </div>
+
+        <div class="field" style="margin-top: 14px; margin-bottom: 0;">
+          <label for="locationResults">Matching locations</label>
+          <select id="locationResults" hidden>
+            <option value="">Select a location</option>
+          </select>
+        </div>
+
+        <p id="locationMessage" class="message" aria-live="polite">
+          Default location: Kolkata, West Bengal.
+        </p>
+
+        <p class="selected-location">
+          Selected: <span id="selectedLocation">Kolkata, West Bengal, India</span>
+        </p>
       </div>
-      <div>
-        <label for="activity">Activity</label>
-        <select id="activity">
-          <option value="indoor">Indoors</option>
-          <option value="outdoor">Outdoors</option>
-        </select>
+    </section>
+
+    <!-- AIR QUALITY DASHBOARD -->
+    <section class="section" id="air-quality">
+      <div class="section-heading">
+        <h2>Outdoor Air Quality</h2>
+        <p>Explore provider-estimated pollutant levels for your selected location.</p>
       </div>
-      <div>
-        <label for="duration">Exposure duration</label>
-        <select id="duration">
-          <option value="15">15 minutes</option>
-          <option value="30">30 minutes</option>
-          <option value="60">1 hour</option>
-          <option value="120">2+ hours</option>
-        </select>
+
+      <div class="card">
+        <div class="air-summary">
+          <div class="air-score">
+            <span class="muted">SAANS PM2.5-based indicator</span>
+            <span class="score-number" id="aqi">--</span>
+            <span id="aqiStatus" class="status">Loading</span>
+          </div>
+
+          <button id="refreshAir" class="btn btn-secondary" type="button">
+            Refresh Air
+          </button>
+        </div>
+
+        <p id="aqiDescription" class="muted" aria-live="polite">
+          Loading air-quality information...
+        </p>
+
+        <div class="pollutant-grid">
+          <div class="pollutant">
+            <span class="pollutant-name">PM2.5</span>
+            <strong class="pollutant-value" id="pm25">--</strong>
+            <span class="pollutant-unit">µg/m³</span>
+          </div>
+
+          <div class="pollutant">
+            <span class="pollutant-name">PM10</span>
+            <strong class="pollutant-value" id="pm10">--</strong>
+            <span class="pollutant-unit">µg/m³</span>
+          </div>
+
+          <div class="pollutant">
+            <span class="pollutant-name">Nitrogen dioxide</span>
+            <strong class="pollutant-value" id="no2">--</strong>
+            <span class="pollutant-unit">µg/m³</span>
+          </div>
+
+          <div class="pollutant">
+            <span class="pollutant-name">Ozone</span>
+            <strong class="pollutant-value" id="o3">--</strong>
+            <span class="pollutant-unit">µg/m³</span>
+          </div>
+        </div>
+
+        <p id="dataSource" class="data-note">
+          Source: Open-Meteo through the SAANS API.
+        </p>
+
+        <p class="data-note">
+          Data time: <span id="dataTimestamp">Waiting for data</span>
+        </p>
+
+        <p id="refreshMessage" class="message" aria-live="polite">
+          Waiting for the first data request.
+        </p>
       </div>
-    </div>
-    <button id="calculateExposureBtn" type="button">Calculate My Exposure</button>
-    <div id="exposureResult" class="result hidden" aria-live="polite"></div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <h2>🏫 School Safety</h2>
-    <div id="schoolStatus" class="school-status">Waiting for data…</div>
-    <div id="schoolAdvice"></div>
-  </section>
+    <!-- PERSONAL EXPOSURE -->
+    <section class="section" id="exposure">
+      <div class="section-heading">
+        <h2>Calculate My Exposure</h2>
+        <p>
+          Estimate a screening score using the selected location's
+          indicator, activity, profile, and duration.
+        </p>
+      </div>
 
-  <section class="panel">
-    <h2>🔥 Stubble Burning / Fire Activity</h2>
-    <p>Fire-hotspot data is not connected yet. No live hotspot count is available.</p>
-    <div class="fire-card">
-      <div><strong id="fireCount">Unavailable</strong><span>hotspot data</span></div>
-      <div><strong id="fireRisk">Unknown</strong><span>regional fire risk</span></div>
-    </div>
-  </section>
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="profile">Personal profile</label>
+            <select id="profile">
+              <option value="adult">Adult</option>
+              <option value="child">Child</option>
+              <option value="elderly">Older adult</option>
+              <option value="worker">Outdoor worker</option>
+              <option value="sensitive">Pollution-sensitive person</option>
+            </select>
+          </div>
 
-  <section class="panel">
-    <h2>🏠 Indoor Air</h2>
-    <p>Enter readings from an indoor monitor. These fields do not measure air automatically.</p>
-    <div class="form-grid">
-      <div><label for="indoorPM25">Indoor PM2.5 (µg/m³)</label><input id="indoorPM25" type="number" min="0" placeholder="Enter reading"></div>
-      <div><label for="co2">CO₂ (ppm)</label><input id="co2" type="number" min="0" placeholder="Enter reading"></div>
-      <div><label for="humidity">Humidity (%)</label><input id="humidity" type="number" min="0" max="100" placeholder="Enter reading"></div>
-    </div>
-    <button id="checkIndoorBtn" type="button">Check Indoor Air</button>
-    <div id="indoorResult" class="result hidden" aria-live="polite"></div>
-  </section>
+          <div class="field">
+            <label for="activity">Activity</label>
+            <select id="activity">
+              <option value="outdoor">Outdoor activity</option>
+              <option value="indoor">Indoor activity</option>
+            </select>
+          </div>
 
-  <section class="panel ai-panel">
-    <h2>🤖 Ask SAANS</h2>
-    <p>Ask about the currently selected location's available air-quality data.</p>
-    <div class="chat">
-      <input id="question" type="text" placeholder="Can my child play outside today?">
-      <button id="askButton" type="button">Ask</button>
-    </div>
-    <div id="aiAnswer" class="ai-answer" aria-live="polite"></div>
-  </section>
-</main>
+          <div class="field full-width">
+            <label for="duration">Exposure duration</label>
+            <select id="duration">
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60" selected>1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="240">4 hours</option>
+              <option value="480">8 hours</option>
+            </select>
+          </div>
+        </div>
 
-<footer>
-  <p>SAANS • Smart Air Awareness &amp; Neighborhood Safety</p>
-  <p>Air-quality estimates are not a substitute for official station measurements or medical advice.</p>
-</footer>
+        <button
+          id="calculateExposureBtn"
+          class="btn btn-primary"
+          type="button"
+        >
+          Calculate My Exposure
+        </button>
 
-<script src="app.js"></script>
+        <div class="result" id="exposureResult" aria-live="polite">
+          Waiting for air-quality data...
+        </div>
+
+        <p class="data-note">
+          This score is a simplified screening estimate. It is not a medical
+          assessment or a measurement of the amount of pollution absorbed.
+        </p>
+
+        <p class="muted">
+          Risk score: <strong id="riskScore">--</strong> / 100
+        </p>
+      </div>
+    </section>
+
+    <!-- SCHOOL SAFETY -->
+    <section class="section" id="school-safety">
+      <div class="section-heading">
+        <h2>School Safety</h2>
+        <p>Air-quality-based precautions for students and school communities.</p>
+      </div>
+
+      <div class="card school-panel">
+        <h3>Current school indicator</h3>
+        <p>
+          Status:
+          <span id="schoolStatus" class="status">Loading</span>
+        </p>
+
+        <p id="schoolAdvice" aria-live="polite">
+          School guidance will appear when air-quality data is available.
+        </p>
+
+        <p class="data-note">
+          This is advisory information based on the SAANS indicator, not an
+          official school closure notice. Follow local health and education
+          authority guidance.
+        </p>
+      </div>
+    </section>
+
+    <!-- PLACE QUALITY CHECKER -->
+    <section class="section" id="place-checker">
+      <div class="section-heading">
+        <h2>Place Quality Checker</h2>
+        <p>Explore estimated outdoor conditions near places people use every day.</p>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="placeType">Place type</label>
+            <select id="placeType">
+              <option value="hospital">Hospital</option>
+              <option value="office">Office</option>
+              <option value="school">School or college</option>
+              <option value="home">Home</option>
+              <option value="public" selected>Public place</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="placeName">Place name (optional)</label>
+            <input
+              id="placeName"
+              type="text"
+              placeholder="For example, Central Hospital"
+            >
+          </div>
+        </div>
+
+        <button id="checkPlace" class="btn btn-primary" type="button">
+          Check Place
+        </button>
+
+        <div id="placeResult" class="result" aria-live="polite">
+          Select a place type to assess outdoor conditions.
+        </div>
+
+        <p class="data-note">
+          The checker uses outdoor estimates for your selected coordinates.
+          It does not measure the actual air inside a building or certify
+          a place as safe.
+        </p>
+      </div>
+    </section>
+
+    <!-- STUBBLE BURNING -->
+    <section class="section" id="stubble-burning">
+      <div class="section-heading">
+        <h2>Stubble Burning and Fire Hotspots</h2>
+        <p>Understand the limits of current fire information.</p>
+      </div>
+
+      <div class="card fire-panel">
+        <h3>Satellite hotspot status</h3>
+
+        <p>
+          Hotspot feed:
+          <span id="fireRisk" class="status">Not connected</span>
+        </p>
+
+        <p id="fireCount">
+          No verified live hotspot count is available in SAANS yet.
+        </p>
+
+        <p class="data-note">
+          SAANS does not currently have a connected satellite fire-hotspot
+          source. It cannot confirm nearby fires or attribute pollution to
+          stubble burning. High particulate levels alone do not prove the
+          source of a fire or pollution event.
+        </p>
+      </div>
+    </section>
+
+    <!-- INDOOR AIR -->
+    <section class="section" id="indoor-air">
+      <div class="section-heading">
+        <h2>Indoor Air Checker</h2>
+        <p>Enter readings from an indoor monitor if you have one.</p>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="indoorPM25">Indoor PM2.5 (µg/m³)</label>
+            <input
+              id="indoorPM25"
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Enter monitor reading"
+            >
+          </div>
+
+          <div class="field">
+            <label for="co2">CO₂ (ppm)</label>
+            <input
+              id="co2"
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Enter monitor reading"
+            >
+          </div>
+
+          <div class="field full-width">
+            <label for="humidity">Relative humidity (%)</label>
+            <input
+              id="humidity"
+              type="number"
+              min="0"
+              max="100"
+              step="any"
+              placeholder="Enter humidity reading"
+            >
+          </div>
+        </div>
+
+        <button id="checkIndoorBtn" class="btn btn-primary" type="button">
+          Check Indoor Readings
+        </button>
+
+        <div id="indoorResult" class="result" aria-live="polite">
+          Indoor readings have not been entered.
+        </div>
+
+        <p class="data-note">
+          SAANS does not automatically measure indoor air. Values entered
+          here are user-provided readings, not connected sensor data.
+        </p>
+      </div>
+    </section>
+
+    <!-- ASK SAANS -->
+    <section class="section" id="ask-saans">
+      <div class="section-heading">
+        <h2>Ask SAANS</h2>
+        <p>Ask about air quality, pollution, exposure, and safety precautions.</p>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <label for="question">Your question</label>
+          <textarea
+            id="question"
+            rows="3"
+            placeholder="For example, what does PM2.5 mean for children?"
+          ></textarea>
+        </div>
+
+        <button id="askButton" class="btn btn-primary" type="button">
+          Ask SAANS
+        </button>
+
+        <div id="aiAnswer" class="result answer-box" aria-live="polite">
+          Ask a question to get guidance from SAANS.
+        </div>
+
+        <p class="data-note">
+          Ask SAANS currently uses predefined rules and available dashboard
+          data. It is not a general-purpose AI model and cannot verify
+          unconnected data sources.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p><strong>SAANS — Smart Air Awareness &amp; Neighborhood Safety</strong></p>
+    <p>
+      Built to make air-quality information easier to understand and use.
+    </p>
+    <p>
+      Provider estimates are not necessarily station measurements.
+      SAANS is an awareness tool, not a medical diagnostic or official
+      regulatory AQI service.
+    </p>
+  </footer>
+
+  <script src="app.js" defer></script>
+
 </body>
 </html>
