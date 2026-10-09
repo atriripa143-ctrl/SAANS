@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAANS — Air Safety System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>SAANS</h1>
+        <p>Smart Air Awareness & Neighborhood Safety</p>
+    </div>
+
+    <div class="location">
+        📍
+        <select id="city">
+            <option value="22.5726,88.3639,Kolkata">Kolkata</option>
+            <option value="28.6139,77.2090,Delhi">Delhi</option>
+            <option value="19.0760,72.8777,Mumbai">Mumbai</option>
+            <option value="12.9716,77.5946,Bengaluru">Bengaluru</option>
+            <option value="13.0827,80.2707,Chennai">Chennai</option>
+            <option value="22.7196,75.8577,Indore">Indore</option>
+        </select>
+    </div>
+</header>
+
+
+<main>
+
+    <!-- AIR QUALITY -->
+
+    <section class="hero-card">
+
+        <div>
+            <p class="label">CURRENT AIR QUALITY</p>
+
+            <div class="aqi-row">
+                <span id="aqi">--</span>
+                <div>
+                    <h2 id="aqiStatus">Loading...</h2>
+                    <p id="aqiDescription">
+                        Getting current air conditions...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="risk-circle">
+            <span id="riskScore">--</span>
+            <small>RISK</small>
+        </div>
+
+    </section>
+
+
+    <!-- POLLUTANTS -->
+
+    <section class="grid">
+
+        <div class="card">
+            <span>PM2.5</span>
+            <strong id="pm25">--</strong>
+            <small>µg/m³</small>
+        </div>
+
+        <div class="card">
+            <span>PM10</span>
+            <strong id="pm10">--</strong>
+            <small>µg/m³</small>
+        </div>
+
+        <div class="card">
+            <span>NO₂</span>
+            <strong id="no2">--</strong>
+            <small>µg/m³</small>
+        </div>
+
+        <div class="card">
+            <span>O₃</span>
+            <strong id="o3">--</strong>
+            <small>µg/m³</small>
+        </div>
+
+    </section>
+
+
+    <!-- PERSONAL EXPOSURE -->
+
+    <section class="panel">
+
+        <h2>🫁 Personal Pollution Exposure</h2>
+
+        <div class="form-grid">
+
+            <div>
+                <label>Who are you?</label>
+
+                <select id="profile">
+                    <option value="child">Child / Student</option>
+                    <option value="adult">Adult</option>
+                    <option value="elderly">Elderly</option>
+                    <option value="worker">Outdoor Worker</option>
+                    <option value="sensitive">Sensitive Person</option>
+                </select>
+            </div>
+
+
+            <div>
+                <label>Activity</label>
+
+                <select id="activity">
+                    <option value="indoor">Indoors</option>
+                    <option value="outdoor">Outdoors</option>
+                </select>
+            </div>
+
+
+            <div>
+                <label>Exposure duration</label>
+
+                <select id="duration">
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="120">2+ hours</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button onclick="calculateExposure()">
+            Calculate My Exposure
+        </button>
+
+        <div id="exposureResult" class="result hidden"></div>
+
+    </section>
+
+
+    <!-- SCHOOL -->
+
+    <section class="panel">
+
+        <h2>🏫 School Safety</h2>
+
+        <div id="schoolStatus" class="school-status">
+            Loading...
+        </div>
+
+        <div id="schoolAdvice"></div>
+
+    </section>
+
+
+    <!-- FIRE -->
+
+    <section class="panel">
+
+        <h2>🔥 Stubble Burning / Fire Activity</h2>
+
+        <div class="fire-card">
+
+            <div>
+                <strong id="fireCount">14</strong>
+                <span>nearby hotspots</span>
+            </div>
+
+            <div>
+                <strong id="fireRisk">Moderate</strong>
+                <span>regional contribution</span>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- INDOOR AIR -->
+
+    <section class="panel">
+
+        <h2>🏠 Indoor Air</h2>
+
+        <div class="form-grid">
+
+            <div>
+                <label>Indoor PM2.5</label>
+                <input id="indoorPM25" type="number" value="25">
+            </div>
+
+            <div>
+                <label>CO₂</label>
+                <input id="co2" type="number" value="800">
+            </div>
+
+            <div>
+                <label>Humidity %</label>
+                <input id="humidity" type="number" value="55">
+            </div>
+
+        </div>
+
+        <button onclick="checkIndoorAir()">
+            Check Indoor Air
+        </button>
+
+        <div id="indoorResult" class="result hidden"></div>
+
+    </section>
+
+
+    <!-- AI -->
+
+    <section class="panel ai-panel">
+
+        <h2>🤖 Ask SAANS</h2>
+
+        <p>
+            Ask about the current air conditions.
+        </p>
+
+        <div class="chat">
+
+            <input
+                id="question"
+                type="text"
+                placeholder="Can my child play outside today?"
+            >
+
+            <button onclick="askSAANS()">
+                Ask
+            </button>
+
+        </div>
+
+        <div id="aiAnswer" class="ai-answer"></div>
+
+    </section>
+
+</main>
+
+
+<footer>
+    <p>SAANS • Smart Air Awareness & Neighborhood Safety</p>
+    <p>Built for environmental safety</p>
+</footer>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
