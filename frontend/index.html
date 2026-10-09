@@ -1,256 +1,161 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAANS — Air Safety System</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAANS — Air Safety System</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
 <header>
-    <div>
-        <h1>SAANS</h1>
-        <p>Smart Air Awareness & Neighborhood Safety</p>
-    </div>
-
-    <div class="location">
-        📍
-        <select id="city">
-            <option value="22.5726,88.3639,Kolkata">Kolkata</option>
-            <option value="28.6139,77.2090,Delhi">Delhi</option>
-            <option value="19.0760,72.8777,Mumbai">Mumbai</option>
-            <option value="12.9716,77.5946,Bengaluru">Bengaluru</option>
-            <option value="13.0827,80.2707,Chennai">Chennai</option>
-            <option value="22.7196,75.8577,Indore">Indore</option>
-        </select>
-    </div>
+  <div>
+    <h1>SAANS</h1>
+    <p>Smart Air Awareness &amp; Neighborhood Safety</p>
+  </div>
+  <div class="location">
+    <label for="locationSearch">📍 Find a location in India</label>
+    <input id="locationSearch" type="search"
+           placeholder="Search city, town or village">
+    <button id="searchLocationBtn" type="button">Search</button>
+    <select id="locationResults" aria-label="Matching locations" hidden>
+      <option value="">Select a location</option>
+    </select>
+    <button id="useMyLocation" type="button">Use my location</button>
+    <p id="locationMessage" role="status"></p>
+    <p>Selected: <strong id="selectedLocation">Kolkata</strong></p>
+    <p>Data timestamp: <time id="dataTimestamp">Waiting for data…</time></p>
+  </div>
 </header>
 
-
 <main>
-
-    <!-- AIR QUALITY -->
-
-    <section class="hero-card">
-
+  <section class="hero-card">
+    <div>
+      <p class="label">CURRENT AIR QUALITY ESTIMATE</p>
+      <div class="aqi-row">
+        <span id="aqi">--</span>
         <div>
-            <p class="label">CURRENT AIR QUALITY</p>
-
-            <div class="aqi-row">
-                <span id="aqi">--</span>
-                <div>
-                    <h2 id="aqiStatus">Loading...</h2>
-                    <p id="aqiDescription">
-                        Getting current air conditions...
-                    </p>
-                </div>
-            </div>
+          <h2 id="aqiStatus">Loading…</h2>
+          <p id="aqiDescription">Getting current air conditions…</p>
         </div>
-
-        <div class="risk-circle">
-            <span id="riskScore">--</span>
-            <small>RISK</small>
-        </div>
-
-    </section>
-
-
-    <!-- POLLUTANTS -->
-
-    <section class="grid">
-
-        <div class="card">
-            <span>PM2.5</span>
-            <strong id="pm25">--</strong>
-            <small>µg/m³</small>
-        </div>
-
-        <div class="card">
-            <span>PM10</span>
-            <strong id="pm10">--</strong>
-            <small>µg/m³</small>
-        </div>
-
-        <div class="card">
-            <span>NO₂</span>
-            <strong id="no2">--</strong>
-            <small>µg/m³</small>
-        </div>
-
-        <div class="card">
-            <span>O₃</span>
-            <strong id="o3">--</strong>
-            <small>µg/m³</small>
-        </div>
-
-    </section>
-
-
-    <!-- PERSONAL EXPOSURE -->
-
-    <section class="panel">
-
-        <h2>🫁 Personal Pollution Exposure</h2>
-
-        <div class="form-grid">
-
-            <div>
-                <label>Who are you?</label>
-
-                <select id="profile">
-                    <option value="child">Child / Student</option>
-                    <option value="adult">Adult</option>
-                    <option value="elderly">Elderly</option>
-                    <option value="worker">Outdoor Worker</option>
-                    <option value="sensitive">Sensitive Person</option>
-                </select>
-            </div>
-
-
-            <div>
-                <label>Activity</label>
-
-                <select id="activity">
-                    <option value="indoor">Indoors</option>
-                    <option value="outdoor">Outdoors</option>
-                </select>
-            </div>
-
-
-            <div>
-                <label>Exposure duration</label>
-
-                <select id="duration">
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
-                    <option value="120">2+ hours</option>
-                </select>
-            </div>
-
-        </div>
-
-        <button onclick="calculateExposure()">
-            Calculate My Exposure
-        </button>
-
-        <div id="exposureResult" class="result hidden"></div>
-
-    </section>
-
-
-    <!-- SCHOOL -->
-
-    <section class="panel">
-
-        <h2>🏫 School Safety</h2>
-
-        <div id="schoolStatus" class="school-status">
-            Loading...
-        </div>
-
-        <div id="schoolAdvice"></div>
-
-    </section>
-
-
-    <!-- FIRE -->
-
-    <section class="panel">
-
-        <h2>🔥 Stubble Burning / Fire Activity</h2>
-
-        <div class="fire-card">
-
-            <div>
-                <strong id="fireCount">14</strong>
-                <span>nearby hotspots</span>
-            </div>
-
-            <div>
-                <strong id="fireRisk">Moderate</strong>
-                <span>regional contribution</span>
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- INDOOR AIR -->
-
-    <section class="panel">
-
-        <h2>🏠 Indoor Air</h2>
-
-        <div class="form-grid">
-
-            <div>
-                <label>Indoor PM2.5</label>
-                <input id="indoorPM25" type="number" value="25">
-            </div>
-
-            <div>
-                <label>CO₂</label>
-                <input id="co2" type="number" value="800">
-            </div>
-
-            <div>
-                <label>Humidity %</label>
-                <input id="humidity" type="number" value="55">
-            </div>
-
-        </div>
-
-        <button onclick="checkIndoorAir()">
-            Check Indoor Air
-        </button>
-
-        <div id="indoorResult" class="result hidden"></div>
-
-    </section>
-
-
-    <!-- AI -->
-
-    <section class="panel ai-panel">
-
-        <h2>🤖 Ask SAANS</h2>
-
-        <p>
-            Ask about the current air conditions.
-        </p>
-
-        <div class="chat">
-
-            <input
-                id="question"
-                type="text"
-                placeholder="Can my child play outside today?"
-            >
-
-            <button onclick="askSAANS()">
-                Ask
-            </button>
-
-        </div>
-
-        <div id="aiAnswer" class="ai-answer"></div>
-
-    </section>
-
+      </div>
+      <p id="dataSource">Source: Open-Meteo Air Quality API</p>
+    </div>
+    <div class="risk-circle">
+      <span id="riskScore">--</span>
+      <small>RISK</small>
+    </div>
+  </section>
+
+  <section class="grid" aria-label="Pollutant concentrations">
+    <div class="card"><span>PM2.5</span><strong id="pm25">--</strong><small>µg/m³</small></div>
+    <div class="card"><span>PM10</span><strong id="pm10">--</strong><small>µg/m³</small></div>
+    <div class="card"><span>NO₂</span><strong id="no2">--</strong><small>µg/m³</small></div>
+    <div class="card"><span>O₃</span><strong id="o3">--</strong><small>µg/m³</small></div>
+  </section>
+  <p id="refreshMessage" role="status"></p>
+  <button id="refreshAir" type="button">Refresh air-quality data</button>
+
+  <section class="panel">
+    <h2>🏥 Place Quality Checker</h2>
+    <p>Check estimated outdoor air conditions around a place. This does not certify indoor air or the overall safety of a building.</p>
+    <div class="form-grid">
+      <div>
+        <label for="placeType">Place type</label>
+        <select id="placeType">
+          <option value="hospital">Hospital</option>
+          <option value="office">Office</option>
+          <option value="school">School / College</option>
+          <option value="home">Home</option>
+          <option value="public">Public place</option>
+        </select>
+      </div>
+      <div>
+        <label for="placeName">Place name (optional)</label>
+        <input id="placeName" type="text" placeholder="e.g. hospital or office name">
+      </div>
+    </div>
+    <button id="checkPlace" type="button">Check place conditions</button>
+    <div id="placeResult" class="result hidden" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <h2>🫁 Personal Pollution Exposure</h2>
+    <div class="form-grid">
+      <div>
+        <label for="profile">Who are you?</label>
+        <select id="profile">
+          <option value="child">Child / Student</option>
+          <option value="adult">Adult</option>
+          <option value="elderly">Elderly</option>
+          <option value="worker">Outdoor Worker</option>
+          <option value="sensitive">Sensitive Person</option>
+        </select>
+      </div>
+      <div>
+        <label for="activity">Activity</label>
+        <select id="activity">
+          <option value="indoor">Indoors</option>
+          <option value="outdoor">Outdoors</option>
+        </select>
+      </div>
+      <div>
+        <label for="duration">Exposure duration</label>
+        <select id="duration">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="120">2+ hours</option>
+        </select>
+      </div>
+    </div>
+    <button id="calculateExposureBtn" type="button">Calculate My Exposure</button>
+    <div id="exposureResult" class="result hidden" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <h2>🏫 School Safety</h2>
+    <div id="schoolStatus" class="school-status">Waiting for data…</div>
+    <div id="schoolAdvice"></div>
+  </section>
+
+  <section class="panel">
+    <h2>🔥 Stubble Burning / Fire Activity</h2>
+    <p>Fire-hotspot data is not connected yet. No live hotspot count is available.</p>
+    <div class="fire-card">
+      <div><strong id="fireCount">Unavailable</strong><span>hotspot data</span></div>
+      <div><strong id="fireRisk">Unknown</strong><span>regional fire risk</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>🏠 Indoor Air</h2>
+    <p>Enter readings from an indoor monitor. These fields do not measure air automatically.</p>
+    <div class="form-grid">
+      <div><label for="indoorPM25">Indoor PM2.5 (µg/m³)</label><input id="indoorPM25" type="number" min="0" placeholder="Enter reading"></div>
+      <div><label for="co2">CO₂ (ppm)</label><input id="co2" type="number" min="0" placeholder="Enter reading"></div>
+      <div><label for="humidity">Humidity (%)</label><input id="humidity" type="number" min="0" max="100" placeholder="Enter reading"></div>
+    </div>
+    <button id="checkIndoorBtn" type="button">Check Indoor Air</button>
+    <div id="indoorResult" class="result hidden" aria-live="polite"></div>
+  </section>
+
+  <section class="panel ai-panel">
+    <h2>🤖 Ask SAANS</h2>
+    <p>Ask about the currently selected location's available air-quality data.</p>
+    <div class="chat">
+      <input id="question" type="text" placeholder="Can my child play outside today?">
+      <button id="askButton" type="button">Ask</button>
+    </div>
+    <div id="aiAnswer" class="ai-answer" aria-live="polite"></div>
+  </section>
 </main>
 
-
 <footer>
-    <p>SAANS • Smart Air Awareness & Neighborhood Safety</p>
-    <p>Built for environmental safety</p>
+  <p>SAANS • Smart Air Awareness &amp; Neighborhood Safety</p>
+  <p>Air-quality estimates are not a substitute for official station measurements or medical advice.</p>
 </footer>
 
-
 <script src="app.js"></script>
-
 </body>
 </html>
