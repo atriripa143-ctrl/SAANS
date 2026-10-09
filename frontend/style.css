@@ -302,3 +302,333 @@ footer {
         flex-direction: column;
     }
 }
+
+/* =========================================
+   SAANS - VISUAL POLISH AND ANIMATIONS
+   ========================================= */
+
+:root {
+  --saans-primary: #174f40;
+  --saans-primary-dark: #123b32;
+  --saans-primary-light: #e9f5ee;
+  --saans-text: #18312b;
+  --saans-muted: #63756e;
+  --saans-border: #dce7e0;
+  --saans-surface: #ffffff;
+  --saans-background: #f5f8f5;
+  --saans-radius: 18px;
+  --saans-shadow: 0 8px 28px rgba(20, 55, 43, 0.06);
+}
+
+/* Smooth page navigation */
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+
+body {
+  background-color: var(--saans-background);
+  color: var(--saans-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Consistent typography */
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.025em;
+}
+
+p {
+  overflow-wrap: break-word;
+}
+
+/* Cards */
+
+.card {
+  border: 1px solid var(--saans-border);
+  border-radius: var(--saans-radius);
+  background: var(--saans-surface);
+  box-shadow: var(--saans-shadow);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: #bfd5c7;
+  box-shadow: 0 12px 34px rgba(20, 55, 43, 0.09);
+}
+
+/* Buttons */
+
+.btn,
+button {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.btn:hover:not(:disabled),
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled),
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background-color: var(--saans-primary);
+  border-color: var(--saans-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--saans-primary-dark);
+  border-color: var(--saans-primary-dark);
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  border-color: #cbdad0;
+  color: var(--saans-primary-dark);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--saans-primary-light);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+/* Accessible keyboard focus */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #6da88a;
+  outline-offset: 3px;
+}
+
+/* Inputs */
+
+input,
+select,
+textarea {
+  border-color: #cddbd2;
+  border-radius: 10px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--saans-primary);
+  box-shadow: 0 0 0 3px rgba(23, 79, 64, 0.12);
+}
+
+/* Result panels */
+
+.result {
+  border-radius: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.result:not(:empty) {
+  animation: saans-result-appear 350ms ease-out both;
+}
+
+.saans-updated {
+  animation: saans-value-update 350ms ease-out;
+}
+
+/* Pollutant tiles */
+
+.pollutant {
+  border: 1px solid var(--saans-border);
+  border-radius: 13px;
+  background: #fbfdfb;
+  transition:
+    background-color 200ms ease,
+    transform 200ms ease,
+    border-color 200ms ease;
+}
+
+.pollutant:hover {
+  background: #f0f7f1;
+  border-color: #c4d9cb;
+  transform: translateY(-2px);
+}
+
+/* Status labels */
+
+.status {
+  border-radius: 999px;
+  font-weight: 700;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.status.green,
+.status.low {
+  background: #d9f3df;
+  color: #14532d;
+}
+
+.status.yellow,
+.status.moderate {
+  background: #fff0bf;
+  color: #854d0e;
+}
+
+.status.orange,
+.status.high {
+  background: #ffe0c2;
+  color: #9a3412;
+}
+
+.status.red,
+.status.very-high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Header links */
+
+.header-nav a {
+  border-radius: 8px;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.header-nav a:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Loading feedback */
+
+button:disabled {
+  position: relative;
+}
+
+button:disabled::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: saans-pulse 900ms ease-in-out infinite alternate;
+}
+
+/* Animation definitions */
+
+@keyframes saans-result-appear {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes saans-value-update {
+  0% {
+    opacity: 0.55;
+    transform: translateY(3px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes saans-pulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+
+@media (max-width: 760px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pollutant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .saans-hero {
+    min-height: 280px;
+  }
+
+  .header-nav {
+    gap: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 17px;
+  }
+
+  .location-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pollutant-grid {
+    gap: 9px;
+  }
+
+  .pollutant {
+    padding: 12px;
+  }
+}
+
+/* Respect reduced-motion accessibility preferences */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
