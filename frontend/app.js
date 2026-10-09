@@ -1,16 +1,20 @@
 
 "use strict";
 
-// ============================================
-// SAANS - India-wide air-quality dashboard
-// AWS Lambda + API Gateway + Open-Meteo
-// ============================================
+// ============================================================
+// SAANS — India-wide air-quality and exposure dashboard
+// Frontend: JavaScript
+// Backend: AWS Lambda + API Gateway
+// Air-quality provider: Open-Meteo
+// ============================================================
 
 const API_URL =
   "https://q87la9nm10.execute-api.ap-south-1.amazonaws.com/air";
 
 const GEOCODING_URL =
   "https://geocoding-api.open-meteo.com/v1/search";
+
+const REFRESH_INTERVAL = 15 * 60 * 1000;
 
 let selectedLocation = {
   name: "Kolkata",
@@ -31,10 +35,11 @@ let currentAir = {
 let latestApiResult = null;
 let searchResults = [];
 let requestVersion = 0;
+let refreshTimer = null;
 
-// ============================================
-// HELPERS
-// ============================================
+// ============================================================
+// GENERAL HELPERS
+// ============================================================
 
 function el(id) {
   return document.getElementById(id);
@@ -42,19 +47,21 @@ function el(id) {
 
 function setText(id, value) {
   const node = el(id);
-  if (node) {
-    node.textContent =
-      value === null || value === undefined || value === ""
-        ? "--"
-        : String(value);
-  }
+  if (!node) return;
+
+  node.textContent =
+    value === null || value === undefined || value === ""
+      ? "--"
+      : String(value);
 }
 
 function showResult(id, message) {
   const node = el(id);
   if (!node) return;
+
   node.textContent = message;
   node.classList.remove("hidden");
+  node.setAttribute("aria-live", "polite");
 }
 
 function hideResult(id) {
@@ -66,15 +73,26 @@ function setStatus(node, status) {
   if (!node) return;
 
   node.classList.remove(
-    "green", "yellow", "orange", "red",
-    "low", "moderate", "high", "very-high"
+    "green",
+    "yellow",
+    "orange",
+    "red",
+    "low",
+    "moderate",
+    "high",
+    "very-high"
   );
 
-  node.classList.add(
-    String(status || "")
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-  );
+  const normalized = String(status || "")
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+
+  if (
+    ["green", "yellow", "orange", "red", "low", "moderate", "high", "very-high"]
+      .includes(normalized)
+  ) {
+    node.classList.add(normalized);
+  }
 }
 
 function numericValue(value) {
@@ -99,28 +117,70 @@ function locationLabel(location) {
   ].filter(Boolean).join(", ");
 }
 
-// ============================================
-// INDIA-WIDE LOCATION SEARCH
-// ============================================
+function setButtonLoading(id, loading, loadingText) {
+  const button = el(id);
+  if (!button) return;
+
+  if (loading) {
+    if (!button.dataset.originalText) {
+      button.dataset.originalText = button.textContent;
+    }
+
+    button.disabled = true;
+    if (loadingText) button.textContent = loadingText;
+  } else {
+    button.disabled = false;
+
+    if (button.dataset.originalText) {
+      button.textContent = button.dataset.originalText;
+      delete button.dataset.originalText;
+    }
+  }
+}
+
+function animateUpdate(node) {
+  if (!node) return;
+
+  // Re-trigger a brief CSS animation when a value changes.
+  node.classList.remove("saans-updated");
+  void node.offsetWidth;
+  node.classList.add("saans-updated");
+}
+
+function setAnimatedText(id, value) {
+  const node = el(id);
+  if (!node) return;
+
+  const next = value === null || value === undefined || value === ""
+    ? "--"
+    : String(value);
+
+  if (node.textContent !== next) {
+    node.textContent = next;
+    animateUpdate(node);
+  }
+}
+
+// ============================================================
+// LOCATION SEARCH
+// ============================================================
 
 async function searchLocations() {
   const query = el("locationSearch")?.value.trim();
-  const message = el("locationMessage");
   const select = el("locationResults");
-  const button = el("searchLocationBtn");
 
   if (!query || query.length < 2) {
-    setText("locationMessage", "Enter at least 2 characters.");
+    setText("locationMessage", "Enter at least two characters.");
     return;
   }
 
-  if (button) button.disabled = true;
-  setText("locationMessage", "Searching Indian locations…");
+  setButtonLoading("searchLocationBtn", true, "Searching...");
+
+  setText("locationMessage", "Searching Indian locations...");
 
   if (select) {
     select.hidden = true;
-    select.innerHTML =
-      '<option value="">Select a location</option>';
+    select.innerHTML = '<option value="">Select a location</option>';
   }
 
   try {
@@ -141,7 +201,6 @@ async function searchLocations() {
 
     const data = await response.json();
 
-    // Filter results to India only.
     searchResults = (data.results || []).filter(place =>
       String(place.country_code || "").toUpperCase() === "IN" &&
       Number.isFinite(Number(place.latitude)) &&
@@ -158,6 +217,7 @@ async function searchLocations() {
 
     searchResults.forEach((place, index) => {
       const option = document.createElement("option");
+
       option.value = String(index);
       option.textContent = [
         place.name,
@@ -165,23 +225,25 @@ async function searchLocations() {
         place.admin2,
         "India"
       ].filter(Boolean).join(", ");
+
       select.appendChild(option);
     });
 
     select.hidden = false;
+
     setText(
       "locationMessage",
       `Found ${searchResults.length} matching locations. Select one below.`
     );
-
   } catch (error) {
     console.error("SAANS location search error:", error);
+
     setText(
       "locationMessage",
-      "Location search failed. Check your internet connection and try again."
+      "Location search failed. Check your connection and try again."
     );
   } finally {
-    if (button) button.disabled = false;
+    setButtonLoading("searchLocationBtn", false);
   }
 }
 
@@ -202,6 +264,7 @@ function selectSearchResult() {
 
   setText("selectedLocation", locationLabel(selectedLocation));
   setText("locationMessage", "Location selected.");
+
   loadAirQuality();
 }
 
@@ -214,12 +277,12 @@ function useMyLocation() {
     return;
   }
 
-  setText("locationMessage", "Requesting your location permission…");
+  setText("locationMessage", "Requesting location permission...");
 
   navigator.geolocation.getCurrentPosition(
     position => {
       selectedLocation = {
-        name: "Your selected coordinates",
+        name: "Selected coordinates",
         admin1: "",
         country: "India",
         lat: position.coords.latitude,
@@ -230,17 +293,20 @@ function useMyLocation() {
         "selectedLocation",
         `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lon.toFixed(4)}`
       );
+
       setText(
         "locationMessage",
-        "Coordinates selected. Results are estimates for this location."
+        "Coordinates selected. Air-quality values are provider estimates."
       );
+
       loadAirQuality();
     },
     error => {
-      console.warn("Device location unavailable:", error.message);
+      console.warn("SAANS location error:", error.message);
+
       setText(
         "locationMessage",
-        "Location permission denied or unavailable. Search for a place instead."
+        "Location permission was denied or unavailable. Search for a place instead."
       );
     },
     {
@@ -251,18 +317,18 @@ function useMyLocation() {
   );
 }
 
-// ============================================
-// LIVE AIR-QUALITY API
-// ============================================
+// ============================================================
+// LOAD AIR QUALITY
+// ============================================================
 
 async function loadAirQuality() {
   const thisRequest = ++requestVersion;
-  const refreshButton = el("refreshAir");
 
-  if (refreshButton) refreshButton.disabled = true;
-  setText("aqiStatus", "Loading…");
-  setText("aqiDescription", "Requesting air-quality data…");
-  setText("refreshMessage", "Fetching data from the air-quality API…");
+  setButtonLoading("refreshAir", true, "Refreshing...");
+
+  setText("aqiStatus", "Loading");
+  setText("aqiDescription", "Requesting air-quality data...");
+  setText("refreshMessage", "Fetching the latest available provider data...");
 
   const params = new URLSearchParams({
     lat: String(selectedLocation.lat),
@@ -273,9 +339,7 @@ async function loadAirQuality() {
   });
 
   try {
-    const response = await fetch(
-      `${API_URL}?${params.toString()}`
-    );
+    const response = await fetch(`${API_URL}?${params.toString()}`);
 
     if (!response.ok) {
       throw new Error(`Air-quality API returned HTTP ${response.status}`);
@@ -284,10 +348,10 @@ async function loadAirQuality() {
     const result = await response.json();
 
     if (!result.success || !result.air) {
-      throw new Error(result.error || "Air-quality data unavailable.");
+      throw new Error(result.error || "Air-quality data is unavailable.");
     }
 
-    // Ignore an older response if the user changed location meanwhile.
+    // Ignore outdated responses if another location was selected.
     if (thisRequest !== requestVersion) return;
 
     const air = result.air;
@@ -309,15 +373,15 @@ async function loadAirQuality() {
 
     setText(
       "refreshMessage",
-      "API request completed. Underlying data may update less frequently."
+      "Request completed. The underlying provider data may update less frequently."
     );
 
     console.log("SAANS API response:", result);
-
   } catch (error) {
     console.error("SAANS air-quality error:", error);
 
-    // Clear previous values so stale readings aren't presented as current.
+    if (thisRequest !== requestVersion) return;
+
     currentAir = {
       pm25: null,
       pm10: null,
@@ -328,39 +392,62 @@ async function loadAirQuality() {
 
     latestApiResult = null;
 
-    ["aqi", "pm25", "pm10", "no2", "o3", "riskScore"].forEach(id =>
-      setText(id, "--")
-    );
+    ["aqi", "pm25", "pm10", "no2", "o3", "riskScore"].forEach(id => {
+      setText(id, "--");
+    });
 
     setText("aqiStatus", "Data unavailable");
     setText(
       "aqiDescription",
-      "SAANS could not retrieve air-quality data. Please retry."
+      "SAANS could not retrieve air-quality data. Check your connection and retry."
     );
+
     setText("dataTimestamp", "Unavailable");
     setText("schoolStatus", "Data unavailable");
-    setText("schoolAdvice", "Safety guidance cannot be updated without air-quality data.");
-    setText("refreshMessage", "Request failed. Check your API and internet connection.");
-    setText("dataSource", "Source: Open-Meteo via SAANS API");
+
+    setText(
+      "schoolAdvice",
+      "School safety guidance cannot be updated without air-quality data."
+    );
+
+    setText(
+      "dataSource",
+      "Source: Open-Meteo via SAANS API. Latest retrieval failed."
+    );
+
+    setText(
+      "refreshMessage",
+      "Request failed. Check the API endpoint, backend logs, and internet connection."
+    );
+
+    showResult(
+      "exposureResult",
+      "Exposure cannot be estimated because air-quality data is unavailable."
+    );
 
     showResult(
       "placeResult",
       "Air-quality data is unavailable. Place conditions cannot currently be assessed."
     );
 
+    showResult(
+      "aiAnswer",
+      "Air-quality data is temporarily unavailable. You can still ask general questions about pollutants, exposure, indoor air, and fire-hotspot limitations."
+    );
   } finally {
-    if (thisRequest === requestVersion && refreshButton) {
-      refreshButton.disabled = false;
+    if (thisRequest === requestVersion) {
+      setButtonLoading("refreshAir", false);
     }
   }
 }
 
-// ============================================
-// DASHBOARD
-// ============================================
+// ============================================================
+// AIR-QUALITY CATEGORY
+// This is a SAANS PM2.5-based indicator, not official AQI.
+// ============================================================
 
 function getAirCategory(value) {
-  if (value === null) {
+  if (value === null || value === undefined) {
     return {
       label: "UNAVAILABLE",
       advice: "No usable air-quality indicator is available."
@@ -394,42 +481,34 @@ function getAirCategory(value) {
   };
 }
 
+// ============================================================
+// DASHBOARD DISPLAY
+// ============================================================
+
 function updateAirDashboard(result) {
   const air = result.air;
 
-  setText("aqi", displayNumber(air.aqi_indicator));
-  setText("pm25", displayNumber(air.pm25));
-  setText("pm10", displayNumber(air.pm10));
-  setText("no2", displayNumber(air.no2));
-  setText("o3", displayNumber(air.o3));
+  setAnimatedText("aqi", displayNumber(air.aqi_indicator));
+  setAnimatedText("pm25", displayNumber(air.pm25));
+  setAnimatedText("pm10", displayNumber(air.pm10));
+  setAnimatedText("no2", displayNumber(air.no2));
+  setAnimatedText("o3", displayNumber(air.o3));
 
   const category = getAirCategory(currentAir.aqi);
 
   setText("aqiStatus", category.label);
-  setText(
-    "aqiDescription",
-    category.advice
-  );
-
   setStatus(el("aqiStatus"), category.label);
 
-  const school = result.school || {};
   setText(
-    "schoolStatus",
-    school.status || "Not available"
+    "aqiDescription",
+    `${category.advice} ${result.note || "The SAANS indicator is approximate and is not an official AQI."}`
   );
-  setText(
-    "schoolAdvice",
-    school.advice || category.advice
-  );
-  setStatus(el("schoolStatus"), school.status || category.label);
 
   setText(
     "dataSource",
-    "Source: Open-Meteo Air Quality API via SAANS. Values are provider estimates, not necessarily station measurements."
+    "Source: Open-Meteo Air Quality API via SAANS. Values are provider estimates and may not represent nearby station measurements."
   );
 
-  // Prefer the source timestamp if the backend returns one.
   const sourceTimestamp =
     air.time ||
     air.timestamp ||
@@ -440,10 +519,11 @@ function updateAirDashboard(result) {
 
   if (sourceTimestamp) {
     const parsed = new Date(sourceTimestamp);
+
     setText(
       "dataTimestamp",
       Number.isNaN(parsed.getTime())
-        ? sourceTimestamp
+        ? String(sourceTimestamp)
         : `${parsed.toLocaleString()} (source timestamp)`
     );
   } else {
@@ -452,18 +532,21 @@ function updateAirDashboard(result) {
       `${new Date().toLocaleString()} (retrieved by SAANS; source timestamp unavailable)`
     );
   }
-
-  setText(
-    "aqiDescription",
-    `${category.advice} ${result.note || "The indicator is approximate and is not an official AQI."}`
-  );
 }
 
-// ============================================
-// PERSONAL EXPOSURE
-// ============================================
+// ============================================================
+// PERSONAL EXPOSURE CALCULATOR
+// Score is a screening heuristic, not a measured dose.
+// ============================================================
 
 function calculateExposure(aqi, profile, activity, duration) {
+  if (!Number.isFinite(Number(aqi))) {
+    return {
+      score: null,
+      level: "UNAVAILABLE"
+    };
+  }
+
   const multipliers = {
     child: 1.25,
     adult: 1,
@@ -472,78 +555,143 @@ function calculateExposure(aqi, profile, activity, duration) {
     sensitive: 1.25
   };
 
-  let score = aqi * (multipliers[profile] || 1);
+  const profileMultiplier = multipliers[profile] || 1;
+  const activityMultiplier = activity === "outdoor" ? 1.25 : 0.75;
 
-  score *= activity === "outdoor" ? 1.25 : 0.75;
+  const minutes = Math.max(0, Number(duration) || 0);
+  const durationMultiplier =
+    minutes >= 120 ? 1.2 :
+    minutes >= 60 ? 1.1 :
+    1;
 
-  if (duration >= 120) {
-    score *= 1.2;
-  } else if (duration >= 60) {
-    score *= 1.1;
-  }
-
-  score = Math.min(100, Math.round(score));
+  const score = Math.min(
+    100,
+    Math.round(
+      Number(aqi) *
+      profileMultiplier *
+      activityMultiplier *
+      durationMultiplier
+    )
+  );
 
   let level = "LOW";
-  if (score > 75) level = "VERY HIGH";
-  else if (score > 50) level = "HIGH";
-  else if (score > 25) level = "MODERATE";
+
+  if (score > 75) {
+    level = "VERY HIGH";
+  } else if (score > 50) {
+    level = "HIGH";
+  } else if (score > 25) {
+    level = "MODERATE";
+  }
 
   return { score, level };
+}
+
+function getExposureAdvice(level) {
+  if (level === "VERY HIGH") {
+    return "Minimize outdoor exposure where possible and follow local health guidance.";
+  }
+
+  if (level === "HIGH") {
+    return "Reduce prolonged or strenuous outdoor activity.";
+  }
+
+  if (level === "MODERATE") {
+    return "Sensitive people should consider limiting prolonged exertion.";
+  }
+
+  if (level === "LOW") {
+    return "Continue monitoring local conditions.";
+  }
+
+  return "Exposure guidance is unavailable.";
 }
 
 function updateExposure() {
   if (currentAir.aqi === null) {
     setText("riskScore", "--");
+
+    showResult(
+      "exposureResult",
+      "Exposure cannot be estimated yet because air-quality data is unavailable. Refresh the dashboard and try again."
+    );
+
     return;
   }
 
+  const profile = el("profile")?.value || "adult";
+  const activity = el("activity")?.value || "outdoor";
+  const duration = Number(el("duration")?.value || 60);
+
   const result = calculateExposure(
     currentAir.aqi,
-    el("profile")?.value || "child",
-    el("activity")?.value || "outdoor",
-    Number(el("duration")?.value || 60)
+    profile,
+    activity,
+    duration
   );
 
-  setText("riskScore", result.score);
-  setText("exposureResult", `${result.level}: ${getExposureAdvice(result.level)}`);
+  if (result.score === null) {
+    setText("riskScore", "--");
+
+    showResult(
+      "exposureResult",
+      "A valid air-quality indicator is required to calculate exposure."
+    );
+
+    return;
+  }
+
+  setAnimatedText("riskScore", result.score);
+
+  showResult(
+    "exposureResult",
+    `Estimated exposure-risk score: ${result.score}/100 — ${result.level}. ` +
+    `Profile: ${profile}. Activity: ${activity}. Duration: ${duration} minutes. ` +
+    `${getExposureAdvice(result.level)} ` +
+    "This is a screening estimate, not a measurement of the dose absorbed by your body."
+  );
 }
 
-function getExposureAdvice(level) {
-  if (level === "VERY HIGH") {
-    return "Minimize exposure and follow local health guidance.";
-  }
-  if (level === "HIGH") {
-    return "Reduce prolonged outdoor activity.";
-  }
-  if (level === "MODERATE") {
-    return "Sensitive people should consider limiting prolonged exertion.";
-  }
-  return "Continue monitoring local conditions.";
-}
-
-// ============================================
+// ============================================================
 // SCHOOL SAFETY
-// ============================================
+// Uses one consistent threshold rule based on the SAANS indicator.
+// It does not make official school closure decisions.
+// ============================================================
 
 function updateSchoolSafety() {
-  if (currentAir.aqi === null) return;
+  const value = currentAir.aqi;
+
+  if (value === null) {
+    setText("schoolStatus", "Data unavailable");
+
+    setText(
+      "schoolAdvice",
+      "School safety guidance cannot be estimated until air-quality data is available."
+    );
+
+    setStatus(el("schoolStatus"), "");
+    return;
+  }
 
   let status;
   let advice;
 
-  if (currentAir.aqi <= 50) {
+  if (value <= 50) {
     status = "GREEN";
-    advice = "Monitor conditions and follow school health guidance.";
-  } else if (currentAir.aqi <= 100) {
+    advice =
+      "The SAANS indicator is low. Continue routine monitoring and follow school health guidance.";
+  } else if (value <= 100) {
     status = "YELLOW";
-    advice = "Sensitive students should consider limiting strenuous outdoor activity.";
-  } else if (currentAir.aqi <= 150) {
+    advice =
+      "The SAANS indicator is moderate. Consider additional precautions for students sensitive to air pollution.";
+  } else if (value <= 150) {
     status = "ORANGE";
-    advice = "Consider reducing prolonged outdoor activities.";
+    advice =
+      "The SAANS indicator is elevated. Consider reducing prolonged or strenuous outdoor activities.";
   } else {
     status = "RED";
-    advice = "Consider moving strenuous activities indoors and follow local advisories.";
+    advice =
+      "The SAANS indicator is very high. Consider moving strenuous activities indoors and follow local health advisories.";
   }
 
   setText("schoolStatus", status);
@@ -551,11 +699,11 @@ function updateSchoolSafety() {
   setStatus(el("schoolStatus"), status);
 }
 
-// ============================================
+// ============================================================
 // PLACE QUALITY CHECKER
-// Checks outdoor conditions at the selected coordinates.
-// Does not certify indoor air or the whole building.
-// ============================================
+// Assesses estimated outdoor conditions at selected coordinates.
+// It does not certify indoor air or the whole building.
+// ============================================================
 
 function updatePlaceChecker() {
   if (currentAir.pm25 === null) {
@@ -575,37 +723,43 @@ function updatePlaceChecker() {
   const placeLabels = {
     hospital: "Hospital",
     office: "Office",
-    school: "School / College",
+    school: "School or college",
     home: "Home",
     public: "Public place"
   };
 
   const recommendations = {
     hospital:
-      "This is outdoor air guidance only. Patients and visitors who are sensitive to pollution should follow facility and medical guidance.",
+      "This is outdoor air guidance only. Sensitive patients and visitors should follow facility and medical guidance.",
     office:
       "Consider reducing strenuous outdoor activity during commutes or breaks. Indoor conditions require separate measurements.",
     school:
       "Consider limiting prolonged outdoor exercise when pollution is elevated. Follow school policies and local advisories.",
     home:
-      "Outdoor conditions do not indicate indoor air quality. Consider indoor sources and ventilate when outdoor air is cleaner.",
+      "Outdoor readings do not indicate indoor air quality. Consider indoor sources and ventilate when outdoor air is cleaner.",
     public:
       "Check conditions before prolonged outdoor activity and follow local health advisories."
   };
 
   const heading = placeName
-    ? `${placeLabels[type]} "${placeName}"`
-    : placeLabels[type];
+    ? `${placeLabels[type] || "Public place"} "${placeName}"`
+    : placeLabels[type] || "Public place";
 
-  const message =
+  showResult(
+    "placeResult",
     `${heading} — ${location}. ` +
-    `Outdoor PM2.5: ${pm25.toFixed(1)} µg/m³. ` +
+    `Estimated outdoor PM2.5: ${pm25.toFixed(1)} µg/m³. ` +
     `SAANS indicator category: ${category.label}. ` +
-    `${recommendations[type]} ` +
-    `This is an outdoor air assessment, not a building safety certification.`;
-
-  showResult("placeResult", message);
+    `${recommendations[type] || recommendations.public} ` +
+    "This is an outdoor air assessment, not a building safety certification."
+  );
 }
+
+// ============================================================
+// INDOOR AIR CHECKER
+// Readings must be entered by the user.
+// No indoor sensor is assumed to be connected.
+// ============================================================
 
 function checkIndoorAir() {
   const pm25 = numericValue(el("indoorPM25")?.value);
@@ -615,7 +769,7 @@ function checkIndoorAir() {
   if (pm25 === null && co2 === null && humidity === null) {
     showResult(
       "indoorResult",
-      "Enter readings from an indoor monitor first. SAANS does not measure indoor air automatically."
+      "Enter readings from an indoor monitor first. SAANS does not automatically measure indoor air."
     );
     return;
   }
@@ -623,98 +777,148 @@ function checkIndoorAir() {
   const notes = [];
 
   if (pm25 !== null) {
+    if (pm25 < 0) {
+      showResult("indoorResult", "PM2.5 cannot be negative.");
+      return;
+    }
+
     notes.push(
       `Indoor PM2.5: ${pm25} µg/m³. Compare with relevant health guidance.`
     );
   }
+
   if (co2 !== null) {
+    if (co2 < 0) {
+      showResult("indoorResult", "CO₂ cannot be negative.");
+      return;
+    }
+
     notes.push(
-      `CO₂: ${co2} ppm. Interpret alongside ventilation, occupancy and applicable guidance.`
+      `CO₂: ${co2} ppm. Interpret alongside ventilation, occupancy, and applicable guidance.`
     );
   }
+
   if (humidity !== null) {
-    notes.push(
-      `Relative humidity: ${humidity}%.`
-    );
+    if (humidity < 0 || humidity > 100) {
+      showResult(
+        "indoorResult",
+        "Relative humidity must be between 0 and 100 percent."
+      );
+      return;
+    }
+
+    notes.push(`Relative humidity: ${humidity}%.`);
   }
 
   showResult(
     "indoorResult",
     notes.join(" ") +
-    " These are user-entered readings, not measurements collected by SAANS."
+    " These are user-entered readings, not measurements collected automatically by SAANS."
   );
 }
 
-// ============================================
-// ASK SAANS — rule-based guidance, not an AI model
-// ============================================
+// ============================================================
+// ASK SAANS
+// Rule-based responses. This is not an AI model.
+// ============================================================
 
 function askSAANS() {
   const question = el("question")?.value.trim();
+
   if (!question) {
-    setText("aiAnswer", "Please enter a question first.");
+    showResult(
+      "aiAnswer",
+      "Enter a question about air quality, pollutants, exposure, school safety, indoor air, or fire hotspots."
+    );
     return;
   }
 
   const q = question.toLowerCase();
-
-  if (currentAir.aqi === null) {
-    setText("aiAnswer", "Air-quality data is not available. Please try refreshing.");
-    return;
-  }
+  const place = locationLabel(selectedLocation);
+  const category = getAirCategory(currentAir.aqi);
+  const hasAirData = currentAir.aqi !== null;
 
   let answer;
 
-  if (
-    q.includes("school") ||
-    q.includes("child") ||
-    q.includes("student")
-  ) {
-    answer = `School guidance for ${selectedLocation.name}: ${el("schoolAdvice")?.textContent || "Follow local health advisories."}`;
-  } else if (
-    q.includes("hospital") ||
-    q.includes("office") ||
-    q.includes("home") ||
-    q.includes("building")
-  ) {
-    answer = "Use the Place Quality Checker to assess estimated outdoor air conditions. SAANS cannot certify indoor air without indoor monitoring data.";
-  } else if (
-    q.includes("fire") ||
-    q.includes("stubble") ||
-    q.includes("burning")
-  ) {
-    answer = "SAANS has not connected a satellite fire-hotspot data source yet, so it cannot confirm nearby fires.";
-  } else if (
-    q.includes("indoor") ||
-    q.includes("room")
-  ) {
-    answer = "Indoor air has not been measured unless you enter readings from an indoor monitor. Outdoor readings cannot establish indoor PM2.5 or CO₂.";
-  } else if (
-    q.includes("pm2.5") ||
-    q.includes("pm25") ||
-    q.includes("particle")
-  ) {
-    answer = currentAir.pm25 === null
-      ? "PM2.5 data is unavailable."
-      : `The API reports outdoor PM2.5 of ${currentAir.pm25.toFixed(1)} µg/m³ for ${selectedLocation.name}. This is a provider estimate, not necessarily a station measurement.`;
-  } else if (
-    q.includes("exercise") ||
-    q.includes("running") ||
-    q.includes("outdoor") ||
-    q.includes("play")
-  ) {
-    answer = getAirCategory(currentAir.aqi).advice +
-      " Follow local health guidance, especially for children and sensitive people.";
+  // Specific topics first to avoid overly broad matches.
+  if (/stubble|crop burning|farm fire|fire hotspot|wildfire|burning field/.test(q)) {
+    answer =
+      "Stubble burning and fire hotspots: SAANS does not currently have a connected satellite hotspot feed. " +
+      "It cannot confirm whether a fire is nearby. Check official satellite fire products and local government alerts. " +
+      "High PM2.5 alone does not prove that stubble burning is the cause.";
+  } else if (/what is saans|about saans|what can you do|what can you answer/.test(q)) {
+    answer =
+      "SAANS helps you explore estimated outdoor air quality, pollutant readings, personal exposure risk, school precautions, and outdoor conditions around places. " +
+      "Indoor air requires entered monitor readings, and fire-hotspot confirmation requires a connected hotspot source.";
+  } else if (/^hello[!. ]*$|^hi[!. ]*$|^hey[!. ]*$|^good morning|^good evening/.test(q)) {
+    answer =
+      "Hello. I can help you understand air-quality estimates, PM2.5 and PM10, outdoor activity precautions, school safety, and indoor air readings. What would you like to know?";
+  } else if (/school|student|child|children|playground|college/.test(q)) {
+    answer = hasAirData
+      ? `School guidance for ${place}: ${el("schoolStatus")?.textContent || category.label}. ` +
+        `${el("schoolAdvice")?.textContent || category.advice} ` +
+        "This is guidance based on an approximate indicator, not an official school closure notice."
+      : "Current air-quality data is unavailable, so I cannot assess school conditions. Refresh the dashboard and follow local school and public-health advisories.";
+  } else if (/exposure|my risk|risk score|breathe|breathing|lung|health|symptom/.test(q)) {
+    answer = hasAirData
+      ? `For ${place}, the current SAANS indicator is ${displayNumber(currentAir.aqi)} (${category.label}). ` +
+        `${category.advice} Personal exposure estimates also depend on your selected profile, activity, and duration. ` +
+        "This tool cannot diagnose symptoms. Seek urgent medical help for severe breathing difficulty or chest pain."
+      : "Current air-quality data is unavailable, so I cannot estimate exposure risk. Refresh the dashboard. Seek urgent medical help for severe breathing difficulty or chest pain.";
+  } else if (/pm\s*2\.?5|pm25|fine particle|fine particulate/.test(q)) {
+    answer = currentAir.pm25 !== null
+      ? `The estimated outdoor PM2.5 level for ${place} is ${displayNumber(currentAir.pm25)} µg/m³. ` +
+        "PM2.5 consists of fine particles that can penetrate deep into the lungs. This is a provider estimate, not necessarily a nearby station reading."
+      : "PM2.5 data is unavailable for the selected location. Try refreshing the dashboard.";
+  } else if (/pm\s*10|pm10|coarse particle/.test(q)) {
+    answer = currentAir.pm10 !== null
+      ? `The estimated outdoor PM10 level for ${place} is ${displayNumber(currentAir.pm10)} µg/m³. ` +
+        "PM10 includes inhalable particles such as dust. This is a provider estimate, not necessarily a station measurement."
+      : "PM10 data is unavailable for the selected location. Try refreshing the dashboard.";
+  } else if (/\bno2\b|nitrogen dioxide/.test(q)) {
+    answer = currentAir.no2 !== null
+      ? `The estimated outdoor NO₂ level for ${place} is ${displayNumber(currentAir.no2)} µg/m³. ` +
+        "Traffic and fuel combustion are common sources. This is a provider estimate."
+      : "NO₂ data is unavailable for the selected location.";
+  } else if (/\bo3\b|ozone/.test(q)) {
+    answer = currentAir.o3 !== null
+      ? `The estimated outdoor ozone (O₃) level for ${place} is ${displayNumber(currentAir.o3)} µg/m³. ` +
+        "Ground-level ozone can irritate the airways, particularly during outdoor exertion. This is a provider estimate."
+      : "Ozone data is unavailable for the selected location.";
+  } else if (/indoor|room|ventilation|co2|carbon dioxide|humidity/.test(q)) {
+    answer =
+      "SAANS cannot automatically measure indoor air. Enter readings from an indoor monitor in the Indoor Air section. " +
+      "Outdoor readings do not tell us the actual indoor PM2.5 or CO₂ level. Ventilate when outdoor air is cleaner and follow applicable guidance.";
+  } else if (/hospital|office|home|building|place quality|public place/.test(q)) {
+    answer = hasAirData
+      ? `For ${place}, the outdoor SAANS indicator is ${displayNumber(currentAir.aqi)} (${category.label}), and estimated outdoor PM2.5 is ${displayNumber(currentAir.pm25)} µg/m³. ` +
+        "Use Place Quality Checker for tailored precautions. These readings cannot certify a building or its indoor air."
+      : "Use Place Quality Checker after air-quality data loads. It assesses estimated outdoor conditions and cannot certify indoor air or an entire building.";
+  } else if (/location|where am i|which city|selected place/.test(q)) {
+    answer = `The selected SAANS location is ${place}. Use location search to check another place in India.`;
+  } else if (/exercise|running|walk|walking|cycling|outdoor|sports|play outside/.test(q)) {
+    answer = hasAirData
+      ? `For outdoor activity in ${place}: ${category.advice} Consider the activity's intensity and duration, and follow local health advisories.`
+      : "Air-quality data is unavailable, so I cannot tailor outdoor-activity advice to your location. Check local air-quality and health advisories before strenuous activity.";
+  } else if (/aqi|air quality|pollution|how bad|current condition|current status/.test(q)) {
+    answer = hasAirData
+      ? `For ${place}, the SAANS PM2.5-based indicator is ${displayNumber(currentAir.aqi)} (${category.label}). ` +
+        `PM2.5: ${displayNumber(currentAir.pm25)} µg/m³; PM10: ${displayNumber(currentAir.pm10)} µg/m³; ` +
+        `NO₂: ${displayNumber(currentAir.no2)} µg/m³; O₃: ${displayNumber(currentAir.o3)} µg/m³. ` +
+        `${category.advice} This indicator is approximate, not an official AQI.`
+      : "Air-quality data is unavailable. Try Refresh Air and check your internet connection.";
   } else {
-    answer = `For ${locationLabel(selectedLocation)}, PM2.5 is ${displayNumber(currentAir.pm25)} µg/m³. The SAANS PM2.5-based indicator is ${displayNumber(currentAir.aqi)}, not an official AQI. ${getAirCategory(currentAir.aqi).advice}`;
+    answer =
+      "I can help with air-quality estimates, PM2.5, PM10, NO₂, ozone, personal exposure, school precautions, indoor air, locations, and stubble-burning data limitations. " +
+      "Try asking: “What is PM2.5?”, “Is it safe for children to play outside?”, “What is the current air quality?”, or “Can you confirm a nearby fire?”";
   }
 
-  setText("aiAnswer", answer);
+  showResult("aiAnswer", answer);
 }
 
-// ============================================
-// EVENTS + INITIALIZATION
-// ============================================
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
 
 function initializeSaans() {
   el("searchLocationBtn")?.addEventListener("click", searchLocations);
@@ -729,9 +933,11 @@ function initializeSaans() {
   el("locationResults")?.addEventListener("change", selectSearchResult);
   el("useMyLocation")?.addEventListener("click", useMyLocation);
   el("refreshAir")?.addEventListener("click", loadAirQuality);
+
   el("checkPlace")?.addEventListener("click", updatePlaceChecker);
   el("placeType")?.addEventListener("change", updatePlaceChecker);
   el("placeName")?.addEventListener("input", updatePlaceChecker);
+
   el("calculateExposureBtn")?.addEventListener("click", updateExposure);
   el("checkIndoorBtn")?.addEventListener("click", checkIndoorAir);
   el("askButton")?.addEventListener("click", askSAANS);
@@ -748,11 +954,28 @@ function initializeSaans() {
   });
 
   setText("selectedLocation", locationLabel(selectedLocation));
+
+  // Display an initial message before the first request finishes.
+  showResult(
+    "exposureResult",
+    "Loading air-quality data to estimate your exposure..."
+  );
+
   loadAirQuality();
 
-  // Refresh the request periodically. The source itself may update less often.
-  window.setInterval(loadAirQuality, 15 * 60 * 1000);
+  if (refreshTimer !== null) {
+    window.clearInterval(refreshTimer);
+  }
+
+  refreshTimer = window.setInterval(
+    loadAirQuality,
+    REFRESH_INTERVAL
+  );
 }
+
+// ============================================================
+// START APP
+// ============================================================
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initializeSaans);
