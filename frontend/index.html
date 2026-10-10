@@ -1,205 +1,226 @@
+
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>SAANS — Air Safety System</title>
-        <link rel="stylesheet" href="style.css" />
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
-        <script src="app.js" defer></script>
-    </head>
-    <body>
-        <header>
-            <a class="brand" href="#top"
-                ><b>S</b><span><strong>SAANS</strong><small>Air Safety System</small></span></a
-            >
-            <nav>
-                <a href="#air-quality">Air Quality</a><a href="#exposure">Exposure</a
-                ><a href="#place-checker">Place Checker</a><a href="#history">Trends</a
-                ><a href="#ask-saans">Ask SAANS</a>
-            </nav>
-        </header>
-        <main id="top">
-            <section class="hero">
-                <p class="eyebrow">BREATHE WITH MORE AWARENESS</p>
-                <h1>Know the air.<br /><span>Make safer choices.</span></h1>
-                <p>
-                    Explore estimated outdoor pollution, understand possible exposure, and ask SAANS for help
-                    interpreting readings.
-                </p>
-            </section>
-            <section class="card">
-                <p class="eyebrow">YOUR LOCATION</p>
-                <h2>Check a place in India</h2>
-                <div class="row">
-                    <input id="locationSearch" placeholder="Search city, town or district" /><button
-                        id="searchLocationBtn"
-                    >
-                        Search</button
-                    ><button id="useMyLocation" class="secondary">Use my location</button>
-                </div>
-                <select id="locationResults" hidden>
-                    <option value="">Select a location</option>
-                </select>
-                <p id="locationMessage" class="muted">Default location: Kolkata, West Bengal.</p>
-                <p>Selected: <strong id="selectedLocation">Kolkata, West Bengal, India</strong></p>
-            </section>
-            <section id="air-quality">
-                <div class="heading">
-                    <div>
-                        <p class="eyebrow">LIVE LOOKUP</p>
-                        <h2>Outdoor air quality</h2>
-                        <p class="muted">Open-Meteo estimates; not necessarily nearby station measurements.</p>
-                    </div>
-                    <button id="refreshAir" class="secondary">Refresh air</button>
-                </div>
-                <div class="grid">
-                    <article class="card main-reading">
-                        <p class="eyebrow">SAANS PM₂.₅-BASED INDICATOR</p>
-                        <div class="row">
-                            <strong id="aqi" class="big">--</strong><span id="aqiStatus" class="status">Loading</span>
-                        </div>
-                        <p id="aqiDescription">Fetching readings…</p>
-                        <small>This approximate indicator is not the official CPCB AQI.</small>
-                    </article>
-                    <article class="card">
-                        <span>PM₂.₅</span><strong id="pm25" class="number">--</strong><small>µg/m³</small>
-                    </article>
-                    <article class="card">
-                        <span>PM₁₀</span><strong id="pm10" class="number">--</strong><small>µg/m³</small>
-                    </article>
-                    <article class="card">
-                        <span>NO₂</span><strong id="no2" class="number">--</strong><small>µg/m³</small>
-                    </article>
-                    <article class="card">
-                        <span>O₃</span><strong id="o3" class="number">--</strong><small>µg/m³</small>
-                    </article>
-                </div>
-                <div class="meta">
-                    <span id="dataSource">Source: Open-Meteo via SAANS.</span
-                    ><span id="dataTimestamp">Timestamp unavailable</span>
-                </div>
-                <p id="refreshMessage" class="muted"></p>
-            </section>
-            <section id="exposure">
-                <p class="eyebrow">PERSONAL ESTIMATE</p>
-                <h2>Exposure calculator</h2>
-                <p class="muted">Screening heuristic only, not measured dose or medical assessment.</p>
-                <div class="card">
-                    <div class="form-grid">
-                        <div>
-                            <label for="profile">Person profile</label
-                            ><select id="profile">
-                                <option value="adult">Adult</option>
-                                <option value="child">Child</option>
-                                <option value="elderly">Older adult</option>
-                                <option value="worker">Outdoor worker</option>
-                                <option value="sensitive">Pollution-sensitive</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="activity">Activity</label
-                            ><select id="activity">
-                                <option value="outdoor">Outdoors</option>
-                                <option value="indoor">Indoors</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="duration">Duration (minutes)</label
-                            ><input id="duration" type="number" min="1" max="720" value="60" />
-                        </div>
-                    </div>
-                    <button id="calculateExposureBtn">Estimate exposure</button>
-                    <div class="result">
-                        <div>Score<strong id="riskScore" class="number">--</strong><small>/100 · heuristic</small></div>
-                        <p id="exposureResult">Loading air-quality data…</p>
-                    </div>
-                </div>
-            </section>
-            <section id="place-checker">
-                <p class="eyebrow">OUTDOOR SCREENING</p>
-                <h2>Place Quality Checker</h2>
-                <p class="muted">SAANS screening bands based on estimated outdoor PM₂.₅.</p>
-                <div class="card">
-                    <div class="form-grid">
-                        <div>
-                            <label for="placeType">Place type</label
-                            ><select id="placeType">
-                                <option value="home">Home</option>
-                                <option value="hospital">Hospital</option>
-                                <option value="office">Office</option>
-                                <option value="school">School or college</option>
-                                <option value="public">Public place</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="placeName">Place name (optional)</label
-                            ><input id="placeName" maxlength="100" placeholder="e.g. Community health centre" />
-                        </div>
-                    </div>
-                    <button id="checkPlace">Check outdoor conditions</button>
-                    <div id="placeResult" class="result place-result" aria-live="polite">
-                        Load readings to check this place.
-                    </div>
-                    <div class="legend">
-                        <div>🟢 <b>Green</b><small>PM₂.₅ ≤ 15 µg/m³</small></div>
-                        <div>🟡 <b>Yellow</b><small>&gt;15 to 35 µg/m³</small></div>
-                        <div>🔴 <b>Red</b><small>&gt;35 µg/m³</small></div>
-                    </div>
-                    <small
-                        >These are SAANS screening bands, not official categories. Outdoor estimates cannot certify
-                        indoor air or a building as safe.</small
-                    >
-                </div>
-            </section>
-            <section id="history">
-                <div class="heading">
-                    <div>
-                        <p class="eyebrow">STORED OBSERVATIONS</p>
-                        <h2>Pollution trend history</h2>
-                        <p class="muted">Only actual readings stored by SAANS. No synthetic historical data.</p>
-                    </div>
-                    <button id="refreshHistory" class="secondary">Refresh history</button>
-                </div>
-                <div class="card">
-                    <div class="row between">
-                        <strong id="historyTitle">Selected location</strong
-                        ><span id="historyCount" class="pill">Waiting for data</span>
-                    </div>
-                    <div class="chart">
-                        <canvas id="historyChart" aria-label="Stored pollution readings over time"></canvas>
-                    </div>
-                    <p id="historyMessage" class="muted">History appears after readings have been stored over time.</p>
-                </div>
-            </section>
-            <section id="ask-saans">
-                <p class="eyebrow">AI AIR-QUALITY ASSISTANT</p>
-                <h2>Ask SAANS</h2>
-                <p class="muted">Ask about pollutants, readings, trends, and practical precautions.</p>
-                <div class="card">
-                    <p><b>SAANS Assistant · Amazon Bedrock</b></p>
-                    <label for="question">Your question</label
-                    ><textarea
-                        id="question"
-                        rows="3"
-                        maxlength="1200"
-                        placeholder="What does today's PM2.5 reading mean for outdoor exercise?"
-                    ></textarea
-                    ><button id="askButton">Ask SAANS</button>
-                    <div id="aiAnswer" class="answer" aria-live="polite">Ask a question about air quality.</div>
-                    <small
-                        >AI answers can be wrong and are not medical advice. Follow official advisories; seek urgent
-                        care for severe breathing difficulty or chest pain.</small
-                    >
-                </div>
-            </section>
-        </main>
-        <footer>
-            <b>SAANS Air Safety System</b>
-            <p>
-                For awareness and screening only. Not an official regulatory AQI service, medical device, or building
-                safety certification.
-            </p>
-        </footer>
-    </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b32">
+  <meta name="description" content="SAANS air-quality awareness, location screening, saved pollution trends and AI guidance.">
+  <title>SAANS | Air Awareness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="#">
+      <span class="brand-mark">S</span>
+      <span><strong>SAANS</strong><small>Air Awareness &amp; Community Safety</small></span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#air-quality">Air quality</a>
+      <a href="#place-checker">Place checker</a>
+      <a href="#trends">Trends</a>
+      <a href="#ask-saans">Ask SAANS AI</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">KNOW YOUR AIR. MAKE INFORMED CHOICES.</p>
+      <h1>Breathe better.<br>Live better.</h1>
+      <p>Understand outdoor pollution, compare locations, follow recorded trends and ask SAANS AI what the readings mean.</p>
+      <a class="button button-light" href="#air-quality">Explore air quality</a>
+    </div>
+    <div class="hero-note">
+      <span class="hero-note-label">BUILT FOR COMMUNITIES</span>
+      <strong>From readings to practical next steps.</strong>
+      <span>Clear information, transparent sources, no invented measurements.</span>
+    </div>
+  </section>
+
+  <section class="section" id="location">
+    <div class="section-heading">
+      <div><p class="eyebrow">YOUR AREA</p><h2>Choose a location</h2></div>
+      <p>Search for an Indian city or use your device location.</p>
+    </div>
+    <div class="panel">
+      <form id="locationForm" class="search-row">
+        <label class="sr-only" for="locationSearch">Search location</label>
+        <input id="locationSearch" type="search" placeholder="Search e.g. Kolkata, Siliguri" autocomplete="off">
+        <button class="button button-primary" type="submit" id="searchLocationBtn">Search</button>
+        <button class="button button-outline" type="button" id="useMyLocation">Use my location</button>
+      </form>
+      <div id="locationResultsWrap" class="hidden location-results-wrap">
+        <label for="locationResults">Matching locations</label>
+        <select id="locationResults"><option value="">Choose a result</option></select>
+      </div>
+      <div class="location-footer">
+        <p id="locationMessage" class="subtle" aria-live="polite">Loading air quality for Kolkata.</p>
+        <p class="selected-place">Selected: <strong id="selectedLocation">Kolkata, West Bengal, India</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="air-quality">
+    <div class="section-heading">
+      <div><p class="eyebrow">CURRENT OUTDOOR CONDITIONS</p><h2>Air-quality overview</h2></div>
+      <button class="button button-outline" type="button" id="refreshAir">Refresh readings</button>
+    </div>
+    <div class="panel">
+      <div class="air-top">
+        <div>
+          <p class="subtle">Provider-reported US AQI</p>
+          <div class="aqi-line">
+            <span id="aqi" class="aqi-number">--</span>
+            <span id="aqiStatus" class="status neutral">Waiting for data</span>
+          </div>
+          <p id="aqiDescription" class="subtle">Retrieving outdoor air-quality data.</p>
+        </div>
+        <div class="source-box">
+          <span class="source-label">DATA SOURCE</span>
+          <strong id="dataSource">Open-Meteo Air Quality</strong>
+          <span class="subtle">Retrieved: <span id="dataTimestamp">--</span></span>
+        </div>
+      </div>
+      <div class="pollutant-grid">
+        <article class="pollutant"><span>PM2.5</span><strong id="pm25">--</strong><small>µg/m³</small></article>
+        <article class="pollutant"><span>PM10</span><strong id="pm10">--</strong><small>µg/m³</small></article>
+        <article class="pollutant"><span>Nitrogen dioxide</span><strong id="no2">--</strong><small>µg/m³</small></article>
+        <article class="pollutant"><span>Ozone</span><strong id="o3">--</strong><small>µg/m³</small></article>
+      </div>
+      <div id="refreshMessage" class="inline-message" aria-live="polite">Waiting for the first update.</div>
+      <p class="disclaimer">The AQI shown is Open-Meteo's US AQI estimate, not India's official CPCB AQI. Provider data may be modelled rather than measured at a nearby monitoring station.</p>
+    </div>
+  </section>
+
+  <section class="section" id="place-checker">
+    <div class="section-heading">
+      <div><p class="eyebrow">COMMUNITY SCREENING</p><h2>Place Quality Checker</h2></div>
+      <p>Use outdoor readings as an initial screening signal.</p>
+    </div>
+    <div class="panel">
+      <div class="place-form">
+        <div class="field">
+          <label for="placeType">Place type</label>
+          <select id="placeType">
+            <option>School or college</option>
+            <option>Residential area</option>
+            <option>Hospital or clinic</option>
+            <option>Workplace</option>
+            <option selected>Public outdoor space</option>
+            <option>Commuting route</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="placeName">Place name (optional)</label>
+          <input id="placeName" type="text" placeholder="e.g. neighbourhood park">
+        </div>
+      </div>
+      <button class="button button-primary" type="button" id="checkPlace">Check place rating</button>
+      <div id="placeResult" class="place-result" aria-live="polite">
+        <div class="place-light neutral-light"><span class="light-dot"></span></div>
+        <div><strong>Waiting for readings</strong><p>Load air-quality data to generate a screening rating.</p></div>
+      </div>
+      <p class="disclaimer">SAANS screening bands: Green 0–50, Yellow 51–100, Red above 100 using provider-reported US AQI. This is not an official safety certification and does not measure indoor air.</p>
+    </div>
+  </section>
+
+  <section class="section" id="exposure">
+    <div class="section-heading">
+      <div><p class="eyebrow">PERSONALISED GUIDANCE</p><h2>Personal exposure planner</h2></div>
+      <p>A simplified comparison, not a medical assessment.</p>
+    </div>
+    <div class="panel">
+      <div class="form-grid">
+        <div class="field">
+          <label for="profile">Profile</label>
+          <select id="profile">
+            <option value="adult">Adult</option>
+            <option value="child">Child</option>
+            <option value="elderly">Older adult</option>
+            <option value="worker">Outdoor worker</option>
+            <option value="sensitive">Pollution-sensitive person</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="activity">Activity</label>
+          <select id="activity">
+            <option value="outdoor">Outdoor activity</option>
+            <option value="indoor">Mostly indoors</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="duration">Time exposed</label>
+          <select id="duration">
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60" selected>1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="240">4 hours</option>
+            <option value="480">8 hours</option>
+          </select>
+        </div>
+      </div>
+      <button class="button button-primary" type="button" id="calculateExposureBtn">Calculate estimate</button>
+      <div id="exposureResult" class="result-box" aria-live="polite">Load air-quality readings to calculate an estimate.</div>
+    </div>
+  </section>
+
+  <section class="section" id="trends">
+    <div class="section-heading">
+      <div><p class="eyebrow">RECORDED READINGS</p><h2>Pollution trend history</h2></div>
+      <button class="button button-outline" type="button" id="refreshHistory">Refresh history</button>
+    </div>
+    <div class="panel">
+      <div class="history-heading">
+        <div><strong id="historyLocation">Kolkata, West Bengal, India</strong><p class="subtle">Readings saved by SAANS when air data is refreshed.</p></div>
+        <span id="historyCount" class="history-count">0 records</span>
+      </div>
+      <div class="chart-wrap"><canvas id="historyChart" role="img" aria-label="Chart of saved AQI and PM2.5 readings"></canvas></div>
+      <div id="historyMessage" class="inline-message" aria-live="polite">History will appear after readings have been saved.</div>
+      <div class="chart-legend"><span><i class="legend-dot aqi-dot"></i>US AQI</span><span><i class="legend-dot pm-dot"></i>PM2.5 (µg/m³)</span></div>
+      <p class="disclaimer">History uses actual saved records in DynamoDB. A new record is saved when the dashboard fetches air-quality data; this is not a continuous sensor feed. At least two records are needed to compare changes.</p>
+    </div>
+  </section>
+
+  <section class="section" id="ask-saans">
+    <div class="section-heading">
+      <div><p class="eyebrow">AI-POWERED AIR EXPLAINER</p><h2>Ask SAANS</h2></div>
+      <p>Ask questions about readings, pollution and precautions.</p>
+    </div>
+    <div class="panel chatbot-panel">
+      <div class="chat-intro">
+        <div class="bot-avatar">S</div>
+        <div><strong>SAANS AI assistant</strong><p class="subtle">Powered by Amazon Bedrock. Answers can be imperfect; verify urgent health advice with a qualified professional.</p></div>
+      </div>
+      <div class="suggestion-row">
+        <button type="button" class="suggestion" data-question="Explain today's air quality in simple language.">Explain my air quality</button>
+        <button type="button" class="suggestion" data-question="What practical steps can reduce outdoor pollution exposure today?">What should I do today?</button>
+        <button type="button" class="suggestion" data-question="Explain the difference between PM2.5 and PM10.">PM2.5 vs PM10</button>
+      </div>
+      <div id="chatMessages" class="chat-messages" aria-live="polite">
+        <div class="chat-bubble assistant-bubble"><strong>SAANS AI</strong><p>Hello! I can explain your dashboard readings, air pollution concepts and practical precautions. What would you like to know?</p></div>
+      </div>
+      <form id="chatForm" class="chat-form">
+        <label class="sr-only" for="question">Ask SAANS a question</label>
+        <textarea id="question" rows="2" maxlength="1200" placeholder="Ask about air quality, PM2.5, exposure or precautions..." required></textarea>
+        <button class="button button-primary" id="askButton" type="submit">Send question</button>
+      </form>
+      <p class="disclaimer">Do not enter private or sensitive personal information. SAANS provides general education, not diagnosis or emergency advice.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <strong>SAANS — Air Awareness &amp; Community Safety</strong>
+  <p>Clearer air information. More informed everyday decisions.</p>
+  <p>Open-Meteo provides outdoor air-quality estimates. SAANS screening ratings are informational and are not official regulatory AQI classifications.</p>
+</footer>
+</body>
 </html>
