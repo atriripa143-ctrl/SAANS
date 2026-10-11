@@ -21,6 +21,7 @@ function setText(id, value) {
 }
 
 function numberText(value) {
+  if (value == null || value === "") return "--";
   const n = Number(value);
   return Number.isFinite(n) ? n.toFixed(1).replace(/\.0$/, "") : "--";
 }
@@ -37,33 +38,39 @@ function locationSlug(value) {
 
 function buttonLoading(button, loading, loadingText, defaultText) {
   if (!button) return;
+
   if (loading) {
     if (!button.disabled) button.dataset.originalText = button.textContent;
     button.disabled = true;
     button.textContent = loadingText;
   } else {
     button.disabled = false;
-    button.textContent = defaultText || button.dataset.originalText || button.textContent;
+    button.textContent =
+      defaultText || button.dataset.originalText || button.textContent;
   }
 }
 
 async function getJSON(url, options = {}) {
   const response = await fetch(url, options);
   let data;
+
   try {
     data = await response.json();
   } catch {
     throw new Error("The server returned an unreadable response.");
   }
+
   if (!response.ok || data.success === false) {
     throw new Error(data.error || `Request failed (${response.status}).`);
   }
+
   return data;
 }
 
 function ratingFor(aqi) {
   const value = Number(aqi);
-  if (!Number.isFinite(value)) {
+
+  if (aqi == null || aqi === "" || !Number.isFinite(value)) {
     return {
       color: "neutral",
       label: "UNAVAILABLE",
@@ -71,42 +78,56 @@ function ratingFor(aqi) {
       advice: "No valid AQI reading is available for this location."
     };
   }
+
   if (value <= 50) {
     return {
       color: "green",
       label: "GREEN",
       title: "Lower screening concern",
-      advice: "Outdoor air is in the lowest SAANS screening band. Continue normal precautions and check again if conditions change."
+      advice:
+        "Outdoor air is in the lowest SAANS screening band. " +
+        "Continue normal precautions and check again if conditions change."
     };
   }
+
   if (value <= 100) {
     return {
       color: "yellow",
       label: "YELLOW",
       title: "Use extra awareness",
-      advice: "Sensitive people may wish to reduce prolonged or strenuous outdoor activity if they notice symptoms. Check conditions again later."
+      advice:
+        "Sensitive people may wish to reduce prolonged or strenuous " +
+        "outdoor activity if they notice symptoms. Check conditions again later."
     };
   }
+
   return {
     color: "red",
     label: "RED",
     title: "Higher screening concern",
-    advice: "Consider reducing prolonged or strenuous outdoor exposure, especially for sensitive groups. Follow local public-health advice."
+    advice:
+      "Consider reducing prolonged or strenuous outdoor exposure, " +
+      "especially for sensitive groups. Follow local public-health advice."
   };
 }
 
 function updateAirUI(data) {
   currentAir = data.air || null;
+
   const aqi = currentAir?.aqi_indicator;
   const rating = ratingFor(aqi);
-  const validAQI = aqi !== null && aqi !== undefined && Number.isFinite(Number(aqi));
+  const validAQI =
+    aqi != null && aqi !== "" && Number.isFinite(Number(aqi));
 
   setText("aqi", validAQI ? Math.round(Number(aqi)) : "--");
 
   const status = $("aqiStatus");
+
   if (status) {
     status.className = `status ${rating.color}`;
-    status.textContent = validAQI ? `${rating.label} · ${rating.title}` : "Waiting for data";
+    status.textContent = validAQI
+      ? `${rating.label} · ${rating.title}`
+      : "Waiting for data";
   }
 
   setText("aqiDescription", rating.advice);
@@ -114,9 +135,18 @@ function updateAirUI(data) {
   setText("pm10", numberText(currentAir?.pm10));
   setText("no2", numberText(currentAir?.no2));
   setText("o3", numberText(currentAir?.o3));
-  setText("dataTimestamp", new Date().toLocaleString());
-  setText("dataSource", "Open-Meteo Air Quality");
+
+  setText(
+    "dataTimestamp",
+    currentAir?.observed_at
+      ? `${currentAir.observed_at} (provider observation time)`
+      : "Observation time unavailable"
+  );
+
+  setText("dataSource", "Open-Meteo Air Quality · US AQI estimate");
+  setText("selectedLocation", selectedLocation.name);
   setText("historyLocation", selectedLocation.name);
+
   setText(
     "refreshMessage",
     data.history_saved
@@ -131,7 +161,7 @@ function updateAirUI(data) {
 async function loadAirQuality() {
   const button = $("refreshAir");
   buttonLoading(button, true, "Refreshing...", "Refresh readings");
-  setText("refreshMessage", "Requesting current outdoor readings...");
+  setText("refreshMessage", "Requesting air-quality readings for the selected coordinates...");
 
   try {
     const params = new URLSearchParams({
@@ -141,13 +171,28 @@ async function loadAirQuality() {
     });
 
     const data = await getJSON(`${API_BASE}/air?${params.toString()}`);
-    if (!data.air) throw new Error("The API response did not contain air-quality data.");
+
+    if (!data.air) {
+      throw new Error("The API response did not contain air-quality data.");
+    }
+
+    // Ignore a stale response if the user changed locations while loading.
+    if (
+      Number(data.latitude) !== selectedLocation.latitude ||
+      Number(data.longitude) !== selectedLocation.longitude
+    ) {
+      // Older backend responses may not include coordinates.
+      // The location name is still displayed from the current selection.
+    }
 
     updateAirUI(data);
     await loadHistory();
   } catch (error) {
     setText("refreshMessage", `Unable to load air quality: ${error.message}`);
-    setText("aqiDescription", "Check your connection and the SAANS API deployment.");
+    setText(
+      "aqiDescription",
+      "Check your connection, selected location, and SAANS API deployment."
+    );
   } finally {
     buttonLoading(button, false, "", "Refresh readings");
   }
@@ -162,18 +207,24 @@ async function searchLocations(query) {
   });
 
   const data = await getJSON(`${GEOCODING_URL}?${params.toString()}`);
+
   return (data.results || []).filter(
-    item => !item.country_code || item.country_code.toUpperCase() === "IN"
+    item =>
+      !item.country_code ||
+      item.country_code.toUpperCase() === "IN"
   );
 }
 
 function formatLocation(item) {
-  return [item.name, item.admin1, item.country].filter(Boolean).join(", ");
+  return [item.name, item.admin1, item.country]
+    .filter(Boolean)
+    .join(", ");
 }
 
 async function handleLocationSearch(event) {
   event.preventDefault();
-  const query = $("locationSearch").value.trim();
+
+  const query = $("locationSearch")?.value.trim();
 
   if (!query) {
     setText("locationMessage", "Enter a city or place name.");
@@ -188,11 +239,19 @@ async function handleLocationSearch(event) {
     const results = await searchLocations(query);
     const select = $("locationResults");
     const wrap = $("locationResultsWrap");
+
+    if (!select || !wrap) {
+      throw new Error("Location result elements are missing from index.html.");
+    }
+
     select.replaceChildren();
 
     if (!results.length) {
       wrap.classList.add("hidden");
-      setText("locationMessage", "No matching Indian locations found. Try another city name.");
+      setText(
+        "locationMessage",
+        "No matching Indian locations found. Try another city name."
+      );
       return;
     }
 
@@ -207,6 +266,7 @@ async function handleLocationSearch(event) {
     wrap.classList.remove("hidden");
     select.value = "0";
     applySelectedSearchResult();
+
     setText("locationMessage", `${results.length} matching location(s) found.`);
   } catch (error) {
     setText("locationMessage", `Location search failed: ${error.message}`);
@@ -218,6 +278,7 @@ async function handleLocationSearch(event) {
 function applySelectedSearchResult() {
   const select = $("locationResults");
   const item = select?._locationResults?.[Number(select.value)];
+
   if (!item) return;
 
   selectedLocation = {
@@ -226,14 +287,26 @@ function applySelectedSearchResult() {
     longitude: Number(item.longitude)
   };
 
+  currentAir = null;
   setText("selectedLocation", selectedLocation.name);
   setText("historyLocation", selectedLocation.name);
+  setText("aqi", "--");
+  setText("pm25", "--");
+  setText("pm10", "--");
+  setText("no2", "--");
+  setText("o3", "--");
+  setText("aqiStatus", "Loading readings...");
+  setText("aqiDescription", "Fetching air-quality data for this location.");
+
   loadAirQuality();
 }
 
 function useMyLocation() {
   if (!navigator.geolocation) {
-    setText("locationMessage", "Location access is not supported by this browser. Search for a city instead.");
+    setText(
+      "locationMessage",
+      "Location access is not supported by this browser. Search for a city instead."
+    );
     return;
   }
 
@@ -242,17 +315,30 @@ function useMyLocation() {
   navigator.geolocation.getCurrentPosition(
     position => {
       selectedLocation = {
-        name: `My location (${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)})`,
+        name:
+          `My location (${position.coords.latitude.toFixed(3)}, ` +
+          `${position.coords.longitude.toFixed(3)})`,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       };
 
+      currentAir = null;
       setText("selectedLocation", selectedLocation.name);
       setText("locationMessage", "Using coordinates shared by your browser.");
       loadAirQuality();
     },
-    () => setText("locationMessage", "Location permission was denied or unavailable. Search for a city instead."),
-    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    error => {
+      const message = error.code === 1
+        ? "Location permission was denied. Allow location access or search for a city."
+        : "Your location could not be determined. Search for a city instead.";
+
+      setText("locationMessage", message);
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 300000
+    }
   );
 }
 
@@ -262,7 +348,11 @@ function updatePlaceRating() {
 
   const rating = ratingFor(currentAir?.aqi_indicator);
   const aqi = Number(currentAir?.aqi_indicator);
-  const valid = currentAir?.aqi_indicator != null && Number.isFinite(aqi);
+  const valid =
+    currentAir?.aqi_indicator != null &&
+    currentAir?.aqi_indicator !== "" &&
+    Number.isFinite(aqi);
+
   const name = $("placeName")?.value.trim();
   const type = $("placeType")?.value || "Public outdoor space";
   const place = name || type;
@@ -270,7 +360,10 @@ function updatePlaceRating() {
   result.replaceChildren();
 
   const light = document.createElement("div");
-  light.className = `place-light ${rating.color === "neutral" ? "neutral-light" : `${rating.color}-light`}`;
+  light.className =
+    `place-light ${
+      rating.color === "neutral" ? "neutral-light" : `${rating.color}-light`
+    }`;
 
   const dot = document.createElement("span");
   dot.className = "light-dot";
@@ -278,6 +371,7 @@ function updatePlaceRating() {
 
   const content = document.createElement("div");
   const title = document.createElement("strong");
+
   title.textContent = valid
     ? `${rating.label}: ${place} — ${rating.title}`
     : "Rating unavailable";
@@ -298,14 +392,19 @@ function calculateExposure() {
   const rawAQI = currentAir?.aqi_indicator;
   const aqi = Number(rawAQI);
 
-  if (rawAQI == null || !Number.isFinite(aqi)) {
-    output.textContent = "Air-quality data is not available yet. Refresh the readings first.";
+  if (
+    rawAQI == null ||
+    rawAQI === "" ||
+    !Number.isFinite(aqi)
+  ) {
+    output.textContent =
+      "Air-quality data is not available yet. Refresh the readings first.";
     return;
   }
 
-  const profile = $("profile").value;
-  const activity = $("activity").value;
-  const duration = Number($("duration").value);
+  const profile = $("profile")?.value || "adult";
+  const activity = $("activity")?.value || "outdoor";
+  const duration = Number($("duration")?.value || 60);
 
   const profileFactor = {
     adult: 1,
@@ -316,10 +415,20 @@ function calculateExposure() {
   }[profile] || 1;
 
   const activityFactor = activity === "outdoor" ? 1 : 0.55;
-  const durationFactor = Math.min(duration / 60, 8);
+  const durationFactor = Math.min(Math.max(duration, 0) / 60, 8);
+
   const score = Math.max(
     0,
-    Math.min(100, Math.round((Math.max(0, aqi) / 150) * 35 * profileFactor * activityFactor * durationFactor))
+    Math.min(
+      100,
+      Math.round(
+        (Math.max(0, aqi) / 150) *
+        35 *
+        profileFactor *
+        activityFactor *
+        durationFactor
+      )
+    )
   );
 
   const level = score < 25
@@ -330,13 +439,15 @@ function calculateExposure() {
 
   output.textContent =
     `Estimated exposure score: ${score}/100 (${level}). ` +
-    "This simplified score compares scenarios using the current provider-reported AQI, selected profile, activity and duration. " +
-    "It is not a measured dose, a prediction of illness, or medical advice.";
+    "This simplified score compares scenarios using the current provider-reported " +
+    "AQI, selected profile, activity and duration. It is not a measured dose, " +
+    "a prediction of illness, or medical advice.";
 }
 
 async function loadHistory() {
   const params = new URLSearchParams({
     location: selectedLocation.name,
+    location_id: locationSlug(selectedLocation.name),
     limit: "48"
   });
 
@@ -344,7 +455,19 @@ async function loadHistory() {
 
   try {
     const data = await getJSON(`${API_BASE}/history?${params.toString()}`);
-    lastHistory = Array.isArray(data.records) ? data.records : [];
+
+    // Support both the current Lambda response and the older frontend format.
+    const records = Array.isArray(data.history)
+      ? data.history
+      : Array.isArray(data.records)
+        ? data.records
+        : [];
+
+    lastHistory = records.map(record => ({
+      ...record,
+      aqi: record.aqi ?? record.aqi_indicator,
+      timestamp: record.timestamp ?? record.observed_at
+    }));
 
     setText(
       "historyCount",
@@ -359,7 +482,10 @@ async function loadHistory() {
           : "No saved readings yet. Refresh air quality after DynamoDB is configured."
       );
     } else {
-      setText("historyMessage", `Showing ${lastHistory.length} saved reading(s), oldest to newest.`);
+      setText(
+        "historyMessage",
+        `Showing ${lastHistory.length} saved reading(s), oldest to newest.`
+      );
     }
 
     drawHistoryChart(lastHistory);
@@ -394,8 +520,14 @@ function drawHistoryChart(records) {
     (a, b) => String(a.timestamp).localeCompare(String(b.timestamp))
   );
 
-  const aqiValues = sorted.map(r => Number(r.aqi)).filter(Number.isFinite);
-  const pmValues = sorted.map(r => Number(r.pm25)).filter(Number.isFinite);
+  const aqiValues = sorted
+    .map(record => Number(record.aqi))
+    .filter(Number.isFinite);
+
+  const pmValues = sorted
+    .map(record => Number(record.pm25))
+    .filter(Number.isFinite);
+
   const maxValue = Math.max(100, ...aqiValues, ...pmValues);
 
   ctx.font = "11px DM Sans, sans-serif";
@@ -416,13 +548,18 @@ function drawHistoryChart(records) {
     ctx.fillStyle = "#63756e";
     ctx.textAlign = "center";
     ctx.font = "13px DM Sans, sans-serif";
-    ctx.fillText("Two or more saved readings are needed.", width / 2, height / 2);
+    ctx.fillText(
+      "Two or more saved readings are needed.",
+      width / 2,
+      height / 2
+    );
     ctx.textAlign = "left";
     return;
   }
 
-  const xAt = i => pad.left + i * chartW / (sorted.length - 1);
-  const yAt = value => pad.top + chartH - (Math.max(0, value) / maxValue) * chartH;
+  const xAt = index => pad.left + index * chartW / (sorted.length - 1);
+  const yAt = value =>
+    pad.top + chartH - (Math.max(0, value) / maxValue) * chartH;
 
   function plot(key, color) {
     const points = sorted.map((record, index) => ({
@@ -457,21 +594,29 @@ function drawHistoryChart(records) {
   ctx.fillStyle = "#63756e";
   ctx.textAlign = "center";
 
-  [0, Math.floor((sorted.length - 1) / 2), sorted.length - 1].forEach(index => {
-    const date = new Date(sorted[index].timestamp);
-    const label = Number.isNaN(date.getTime())
-      ? ""
-      : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    ctx.fillText(label, xAt(index), height - 10);
-  });
+  [0, Math.floor((sorted.length - 1) / 2), sorted.length - 1]
+    .forEach(index => {
+      const date = new Date(sorted[index].timestamp);
+      const label = Number.isNaN(date.getTime())
+        ? ""
+        : date.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric"
+          });
+
+      ctx.fillText(label, xAt(index), height - 10);
+    });
 
   ctx.textAlign = "left";
 }
 
 function addChatMessage(role, text) {
   const container = $("chatMessages");
+  if (!container) return null;
+
   const bubble = document.createElement("div");
-  bubble.className = `chat-bubble ${role === "user" ? "user-bubble" : "assistant-bubble"}`;
+  bubble.className =
+    `chat-bubble ${role === "user" ? "user-bubble" : "assistant-bubble"}`;
 
   const label = document.createElement("strong");
   label.textContent = role === "user" ? "You" : "SAANS AI";
@@ -482,6 +627,7 @@ function addChatMessage(role, text) {
   bubble.append(label, paragraph);
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
+
   return bubble;
 }
 
@@ -489,14 +635,16 @@ async function askSAANS(event) {
   event.preventDefault();
 
   const input = $("question");
-  const question = input.value.trim();
+  const question = input?.value.trim();
+
   if (!question) return;
 
   addChatMessage("user", question);
   input.value = "";
 
-  const pending = addChatMessage("assistant", "Thinking...");
+  const pending = addChatMessage("assistant", "Checking your dashboard data...");
   const button = $("askButton");
+
   buttonLoading(button, true, "Thinking...", "Send question");
 
   try {
@@ -509,7 +657,8 @@ async function askSAANS(event) {
         pm10: currentAir.pm10,
         no2: currentAir.no2,
         o3: currentAir.o3,
-        aqi_indicator: currentAir.aqi_indicator
+        aqi_indicator: currentAir.aqi_indicator,
+        observed_at: currentAir.observed_at
       } : null
     };
 
@@ -520,17 +669,27 @@ async function askSAANS(event) {
     });
 
     const answer = data.answer || "I couldn't generate an answer just now.";
-    pending.querySelector("p").textContent = answer;
+
+    if (pending) {
+      const paragraph = pending.querySelector("p");
+      if (paragraph) paragraph.textContent = answer;
+    }
 
     chatHistory.push(
       { role: "user", content: question },
       { role: "assistant", content: answer }
     );
+
     chatHistory = chatHistory.slice(-8);
   } catch (error) {
-    pending.querySelector("p").textContent =
-      `I couldn't connect to the AI service: ${error.message} ` +
-      "Check the /chat API route, Bedrock model access, and Lambda permissions.";
+    if (pending) {
+      const paragraph = pending.querySelector("p");
+      if (paragraph) {
+        paragraph.textContent =
+          `I couldn't connect to the AI service: ${error.message} ` +
+          "Check the /chat API route and Bedrock Mantle configuration.";
+      }
+    }
   } finally {
     buttonLoading(button, false, "", "Send question");
   }
@@ -550,12 +709,17 @@ function setup() {
 
   document.querySelectorAll("[data-question]").forEach(button => {
     button.addEventListener("click", () => {
-      $("question").value = button.dataset.question || "";
-      $("question").focus();
+      const input = $("question");
+      if (!input) return;
+
+      input.value = button.dataset.question || "";
+      input.focus();
     });
   });
 
   window.addEventListener("resize", () => drawHistoryChart(lastHistory));
+
+  setText("selectedLocation", selectedLocation.name);
   loadAirQuality();
 }
 
